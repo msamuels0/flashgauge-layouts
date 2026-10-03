@@ -1,3 +1,28 @@
 {
-  "layouts": []
+  "layouts": [
+    {
+      "file": "bargraphs.fglayout",
+      "title": "Bar Graphs",
+      "author": "FlashGauge",
+      "description": "Bar graph based FlashGauge layout"
+    },
+    {
+      "file": "dash-rev3 (1).fglayout",
+      "title": "Dash Rev 3",
+      "author": "FlashGauge",
+      "description": "FlashGauge dashboard layout, revision 3"
+    },
+    {
+      "file": "s2r-speedo-mph.fglayout",
+      "title": "S2R Speedometer (MPH)",
+      "author": "FlashGauge",
+      "description": "MPH speedometer layout for the Ducati S2R"
+    },
+    {
+      "file": "untitled-layout-rev7.fglayout",
+      "title": "Untitled Layout Rev 7",
+      "author": "FlashGauge",
+      "description": "FlashGauge layout, revision 7"
+    }
+  ]
 }
