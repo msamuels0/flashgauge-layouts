@@ -1,0 +1,4874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlashGauge layout studio</title>
+<style>
+  :root {
+    --housing: #14171b;
+    --panel:   #1c2026;
+    --raised:  #242931;
+    --dial:    #0b0d10;
+    --lit:     #e9e5db;
+    --dim:     #8b939e;
+    --amber:   #f2a93b;
+    --amber-d: #a8741f;
+    --redline: #e2484d;
+    --hairline: #2c323a;
+
+    --ui: "Bahnschrift", "DIN Alternate", "Roboto Condensed",
+          "Helvetica Neue", system-ui, sans-serif;
+    --mono: "Cascadia Mono", "SF Mono", "Consolas", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--housing);
+    color: var(--lit);
+    font-family: var(--ui);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--hairline);
+    background: linear-gradient(180deg, #191d22, var(--housing));
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin: 0;
+  }
+  header .ident {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+  }
+  header .ident b { color: var(--amber); font-weight: 500; }
+
+  main {
+    display: grid;
+    grid-template-columns: minmax(320px, 460px) 1fr;
+    gap: 28px;
+    padding: 28px;
+    align-items: start;
+    max-width: 1280px;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* ---- dial column ---- */
+  .stage { display: flex; flex-direction: column; gap: 22px; }
+
+  .dial-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--dial);
+    box-shadow:
+      0 0 0 10px #1a1e24,
+      0 0 0 11px #333a44,
+      0 18px 40px rgba(0,0,0,.55);
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+  }
+  .dial-wrap:active { cursor: grabbing; }
+  .dial-wrap canvas { width: 100%; height: 100%; display: block; }
+  .dial-empty {
+    position: absolute; inset: 0;
+    display: grid; place-content: center; gap: 6px;
+    text-align: center; color: var(--dim); pointer-events: none;
+    padding: 40px;
+  }
+  .dial-wrap.has-image .dial-empty { display: none; }
+
+  .budget { display: flex; align-items: center; gap: 18px; }
+  .budget svg { flex: none; }
+  .budget-read .num {
+    font-family: var(--mono);
+    font-size: 22px;
+    color: var(--lit);
+  }
+  .budget-read .num.over { color: var(--redline); }
+  .budget-read .sub { font-size: 13px; color: var(--dim); }
+
+  /* ---- controls column ---- */
+  .controls { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+  section.block {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 18px 20px;
+  }
+  section.block > h2 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  section.block > p.hint {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: var(--dim);
+    max-width: 62ch;
+  }
+
+  button {
+    font-family: var(--ui);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    color: var(--lit);
+    background: var(--raised);
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--amber-d); }
+  button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.primary {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: #17120a;
+    font-weight: 600;
+  }
+  button.primary:hover:not(:disabled) { background: #ffbb52; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  label.slider {
+    display: grid;
+    grid-template-columns: 58px 1fr 52px;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--dim);
+    margin-top: 12px;
+  }
+  label.slider output { font-family: var(--mono); color: var(--lit); text-align: right; }
+  input[type=range] { width: 100%; accent-color: var(--amber); }
+
+  label.check {
+    display: flex; gap: 9px; align-items: flex-start;
+    font-size: 13px; color: var(--dim); margin-top: 12px; cursor: pointer;
+  }
+  label.check input { accent-color: var(--amber); margin-top: 3px; }
+  label.check span b { color: var(--lit); font-weight: 500; display: block; }
+
+  input[type=text] {
+    font-family: var(--ui);
+    font-size: 14px;
+    color: var(--lit);
+    background: var(--dial);
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    padding: 7px 10px;
+    width: 100%;
+  }
+  input[type=text]:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+  table.assets { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.assets th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--dim);
+    font-size: 12px;
+    padding: 0 8px 8px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  table.assets td {
+    padding: 9px 8px 9px 0;
+    border-bottom: 1px solid var(--hairline);
+    vertical-align: baseline;
+  }
+  table.assets td.path { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+  table.assets td.size { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  table.assets td.act { text-align: right; width: 1%; }
+  table.assets td.act button { padding: 3px 9px; font-size: 12px; }
+  .empty-row { color: var(--dim); font-size: 13px; padding: 14px 0; }
+
+  .naming {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    font-size: 13px; color: var(--dim);
+    margin: 0 0 14px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .naming input[type=text] {
+    width: auto; padding: 4px 8px; font-family: var(--mono); font-size: 12px;
+  }
+  .naming span { font-family: var(--mono); font-size: 12px; color: var(--lit); }
+  .naming button { padding: 4px 10px; font-size: 12px; margin-left: auto; }
+
+  .field { display: grid; grid-template-columns: 92px 1fr; align-items: center;
+           gap: 10px; margin-top: 10px; font-size: 13px; color: var(--dim); }
+  .field .pair { display: flex; gap: 8px; }
+  .field input[type=number] {
+    width: 100%; font-family: var(--mono); font-size: 13px; color: var(--lit);
+    background: var(--dial); border: 1px solid var(--hairline);
+    border-radius: 3px; padding: 6px 8px;
+  }
+  .field input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .elhead { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .elhead .tag {
+    font-family: var(--mono); font-size: 11px; color: #17120a;
+    background: var(--amber); border-radius: 3px; padding: 1px 7px;
+  }
+  .elhead .eid { font-family: var(--mono); font-size: 13px; color: var(--lit); }
+
+  .field select, .field textarea, .field input[type=text] {
+    width: 100%; font-family: var(--mono); font-size: 13px; color: var(--lit);
+    background: var(--dial); border: 1px solid var(--hairline);
+    border-radius: 3px; padding: 6px 8px;
+  }
+  .field textarea { resize: vertical; min-height: 58px; line-height: 1.45; }
+  .field select:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .field input[type=color] {
+    width: 44px; height: 28px; padding: 2px; background: var(--dial);
+    border: 1px solid var(--hairline); border-radius: 3px; cursor: pointer;
+  }
+  .field .pair.tight { align-items: center; }
+  .subhead {
+    margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--hairline);
+    font-size: 13px; font-weight: 600; letter-spacing: .03em; color: var(--lit);
+  }
+  .elact { display: flex; gap: 8px; margin-top: 16px; }
+  .elact button { font-size: 12px; padding: 5px 12px; }
+  .elact button.danger:hover:not(:disabled) { border-color: var(--redline); color: var(--redline); }
+  #elementRows tr { cursor: pointer; }
+  #elementRows tr:hover td { color: var(--lit); }
+  #elementRows tr.selrow td { color: var(--amber); }
+  #elementRows td.etype {
+    width: 1%; padding-right: 12px; font-family: var(--mono);
+    font-size: 11px; color: var(--dim); text-transform: uppercase;
+  }
+  #elementRows td.ech {
+    font-family: var(--mono); font-size: 12px; color: var(--dim);
+    text-align: right; white-space: nowrap;
+  }
+  td.path[contenteditable] { outline: none; cursor: text; }
+  td.path[contenteditable]:hover { color: var(--amber); }
+  td.path[contenteditable]:focus { color: var(--lit); background: var(--dial); }
+
+  td.mark { width: 1%; padding-right: 10px; font-family: var(--mono); }
+  td.mark.have { color: var(--amber); }
+  td.mark.need { color: var(--redline); }
+  tr.missing td.path { color: var(--dim); }
+
+  .status {
+    margin-top: 14px;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 3px;
+    border-left: 3px solid var(--amber);
+    background: rgba(242,169,59,.08);
+    color: var(--lit);
+    white-space: pre-wrap;
+  }
+  .status.bad { border-left-color: var(--redline); background: rgba(226,72,77,.09); }
+  .status.hidden { display: none; }
+
+  details.tool { margin-top: 4px; }
+  details.tool summary {
+    cursor: pointer; font-size: 13px; color: var(--dim);
+    padding: 4px 0; list-style: revert;
+  }
+  details.tool summary:hover { color: var(--lit); }
+  details.tool .body { padding-top: 12px; }
+  pre.readout {
+    font-family: var(--mono); font-size: 12px; color: var(--lit);
+    background: var(--dial); border: 1px solid var(--hairline);
+    border-radius: 3px; padding: 12px; overflow-x: auto; margin: 12px 0 0;
+  }
+  .drop-hot { outline: 2px dashed var(--amber); outline-offset: -6px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  /* ---- tabs ---- */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hairline); margin-bottom: 2px; }
+  .tabs button {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    border-radius: 0; padding: 8px 16px 10px; color: var(--dim); font-weight: 500;
+  }
+  .tabs button:hover:not(:disabled) { color: var(--lit); border-color: transparent; }
+  .tabs button[aria-selected="true"] { color: var(--amber); border-bottom-color: var(--amber); }
+  .tabpane { display: flex; flex-direction: column; gap: 22px; }
+  .tabpane[hidden] { display: none; }
+
+  /* ---- simulator ---- */
+  .sim-transport { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .sim-transport button.on { border-color: var(--amber); color: var(--amber); }
+  .sim-clock { font-family: var(--mono); font-size: 13px; color: var(--dim); margin-left: auto; }
+  .sim-row { display: grid; grid-template-columns: 128px 1fr 92px; align-items: center;
+             gap: 12px; margin-top: 10px; font-size: 13px; color: var(--dim); }
+  .sim-row output { font-family: var(--mono); color: var(--lit); text-align: right; }
+  .sim-row.unused { opacity: .45; }
+  .sim-row input[type=number] {
+    width: 100%; font-family: var(--mono); font-size: 13px; color: var(--lit);
+    background: var(--dial); border: 1px solid var(--hairline); border-radius: 3px; padding: 5px 8px;
+  }
+  .lamps { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 8px; margin-top: 10px; }
+  .lamp {
+    display: flex; align-items: center; gap: 8px; justify-content: space-between;
+    border: 1px solid var(--hairline); border-radius: 3px; padding: 6px 8px;
+    font-size: 13px; color: var(--dim); background: var(--raised); cursor: pointer; user-select: none;
+  }
+  .lamp .dot { width: 10px; height: 10px; border-radius: 50%; background: #2c323a; flex: none; }
+  .lamp.lit { color: var(--lit); border-color: var(--amber-d); }
+  .lamp.lit .dot { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .lamp.unused { opacity: .45; }
+  .lamp select { font-size: 12px; background: var(--dial); color: var(--lit);
+                 border: 1px solid var(--hairline); border-radius: 3px; padding: 1px 4px; }
+  .dial-wrap.simulating .dial-empty { display: none; }
+  .dial-wrap.simulating { cursor: default; box-shadow: 0 0 0 10px #1a1e24, 0 0 0 11px var(--amber-d), 0 18px 40px rgba(0,0,0,.55); }
+
+  /* ---- vehicle settings ---- */
+  .field .unit { font-family: var(--mono); font-size: 12px; color: var(--dim); white-space: nowrap; }
+  .field .pair input[type=number] { min-width: 0; }
+  table.curve { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.curve th {
+    text-align: left; font-weight: 500; color: var(--dim); font-size: 12px;
+    padding: 0 8px 6px 0; border-bottom: 1px solid var(--hairline);
+  }
+  table.curve td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--hairline); }
+  table.curve td input[type=number] {
+    width: 100%; font-family: var(--mono); font-size: 13px; color: var(--lit);
+    background: var(--dial); border: 1px solid var(--hairline);
+    border-radius: 3px; padding: 4px 6px;
+  }
+  table.curve td.act { width: 1%; text-align: right; }
+  table.curve td.act button { padding: 2px 8px; font-size: 12px; }
+  table.curve tr.bad td input { border-color: var(--redline); }
+  .curve-plot { display: block; width: 100%; height: 150px; margin-top: 10px;
+                background: var(--dial); border: 1px solid var(--hairline); border-radius: 3px; }
+  .curve-note { font-size: 12px; color: var(--dim); margin-top: 6px; }
+  .gen { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+         gap: 8px 12px; margin-top: 8px; }
+  .gen label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--dim); }
+  .gen input[type=number] {
+    font-family: var(--mono); font-size: 13px; color: var(--lit);
+    background: var(--dial); border: 1px solid var(--hairline); border-radius: 3px; padding: 4px 6px;
+  }
+
+  /* fonts panel */
+  .fcard { border: 1px solid var(--hairline); border-radius: 3px; padding: 12px 14px;
+           margin-top: 12px; background: var(--raised); }
+  .fhead { display: flex; gap: 10px; align-items: baseline; }
+  .fhead b { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .fhead span { font-size: 12px; color: var(--dim); flex: 1; word-break: break-all; }
+  .fhead button { font-size: 12px; padding: 3px 9px; }
+  .fsample { font-size: 30px; line-height: 1.3; margin: 10px 0 6px; color: var(--lit);
+             overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .fsample.missing { font-size: 12px; line-height: 1.5; color: var(--amber); white-space: normal; }
+  .fchip { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+           padding: 6px 0; border-top: 1px solid var(--hairline); font-size: 12px; }
+  .fchip .fname { font-family: var(--mono); color: var(--lit); }
+  .fchip .finfo { color: var(--dim); }
+  .fchip button { padding: 2px 9px; font-size: 12px; }
+  input.fsize { width: 90px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FlashGauge layout studio</h1>
+  <div class="ident">
+    <span id="identName">no layout loaded</span>
+    &nbsp; rev <b id="identRev">—</b>
+    &nbsp; <span id="identId">—</span>
+  </div>
+</header>
+
+<main>
+  <div class="stage">
+    <div class="dial-wrap" id="dialWrap">
+      <canvas id="preview" width="720" height="720"></canvas>
+      <div class="dial-empty">
+        <div>720 × 720 round display</div>
+        <div style="font-size:13px">Add a background to see it here</div>
+      </div>
+    </div>
+
+    <div class="budget">
+      <svg width="132" height="80" viewBox="0 0 132 80" aria-hidden="true">
+        <!-- sweep from 200° to 340°, redline in the last fifth -->
+        <path d="M 16 70 A 50 50 0 0 1 116 70" fill="none"
+              stroke="#22272e" stroke-width="9" stroke-linecap="round"/>
+        <path d="M 96 27.5 A 50 50 0 0 1 116 70" fill="none"
+              stroke="#4a2327" stroke-width="9" stroke-linecap="round"/>
+        <path id="budgetArc" d="M 16 70 A 50 50 0 0 1 116 70" fill="none"
+              stroke="var(--amber)" stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="157" stroke-dashoffset="157"/>
+        <circle cx="66" cy="70" r="4" fill="#3a424c"/>
+        <line id="budgetNeedle" x1="66" y1="70" x2="16" y2="70"
+              stroke="var(--lit)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div class="budget-read">
+        <div class="num" id="budgetNum">0 KB</div>
+        <div class="sub" id="budgetSub">of 4,096 KB flash · nothing to install yet</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabBtnBuild" aria-selected="true">Build</button>
+      <button role="tab" id="tabBtnSim" aria-selected="false">Simulate</button>
+    </div>
+
+    <div class="tabpane" id="paneSim" hidden>
+      <section class="block">
+        <h2>Simulate the dash</h2>
+        <p class="hint">Drives the preview through the same maths as the firmware: the
+          40 Hz update loop, the RPM smoothing, each binding's filter, deadband and range,
+          startup sweeps, show/hide lamps and label formatting, in this layout's units.
+          Nothing here is saved or exported.</p>
+        <div class="sim-transport">
+          <button id="simKey">Key on</button>
+          <button id="simRide">Ride</button>
+          <button id="simWarm">Warm-up</button>
+          <button id="simPause">Pause</button>
+          <span class="sim-clock" id="simStatus">manual</span>
+        </div>
+        <div class="status hidden" id="simNote"></div>
+      </section>
+
+      <section class="block">
+        <h2>Engine &amp; road</h2>
+        <div id="simValues"></div>
+      </section>
+
+      <section class="block">
+        <h2>Lamps</h2>
+        <p class="hint">Click to switch a lamp. Blinkers can also flash at the dash's own rate.</p>
+        <div class="lamps" id="simLamps"></div>
+      </section>
+
+      <section class="block">
+        <h2>Distance, temperature, clock</h2>
+        <div id="simMore"></div>
+      </section>
+    </div>
+
+    <div class="tabpane" id="paneBuild">
+
+    <section class="block" id="layoutBlock">
+      <h2>Start from a layout</h2>
+      <p class="hint">Load a dash.json to keep working on it — everything it contains is
+        kept, even fields this tool doesn't edit — or start blank and build the whole
+        layout here.</p>
+      <div class="row">
+        <button id="btnLoadJson">Choose dash.json</button>
+        <button id="btnNewJson">Start a blank layout</button>
+      </div>
+      <div class="row">
+        <button id="btnImportFgl">Open a .fglayout</button>
+        <button id="btnRemix" disabled>Remix as my own</button>
+      </div>
+      <p class="hint">Opening a .fglayout unpacks it — the layout, its artwork and its
+        fonts — so you can change one thing and export it again. It keeps the original
+        layout's identity; use <em>Remix as my own</em> if you're publishing it as a
+        new layout rather than updating that one.</p>
+      <div class="status hidden" id="layoutStatus"></div>
+      <div class="subhead" style="margin-top:14px">Units</div>
+      <p class="hint">The dash converts every signal once, so speed, distance and
+        temperature labels and needle ranges are all in these units.</p>
+      <div class="field"><label>Speed &amp; distance</label>
+        <select id="unitSpeed"><option value="mph">mph / miles</option><option value="kph">km/h / km</option></select></div>
+      <div class="field"><label>Temperature</label>
+        <select id="unitTemp"><option value="f">°F</option><option value="c">°C</option></select></div>
+      <div class="field"><label>Clock</label>
+        <select id="unitClock"><option value="12h">12-hour</option><option value="24h">24-hour</option></select></div>
+    </section>
+
+    <section class="block" id="elementsBlock">
+      <h2>Elements</h2>
+      <p class="hint">Everything the dash draws. Add widgets here, then click one on the
+        dial or in this list to select it — drag to place, arrow keys nudge
+        (Shift&nbsp;=&nbsp;10), Delete removes.</p>
+      <div class="row">
+        <button data-add="image">+ Image</button>
+        <button data-add="needle">+ Needle</button>
+        <button data-add="label">+ Label</button>
+        <button data-add="bar">+ Bar</button>
+        <button data-add="shape">+ Shape</button>
+      </div>
+      <table class="assets" style="margin-top:14px">
+        <tbody id="elementRows"></tbody>
+      </table>
+      <div class="status hidden" id="elementStatus"></div>
+    </section>
+
+    <section class="block">
+      <h2>Background</h2>
+      <p class="hint">Drag to move, scroll or use the slider to zoom. Only what falls inside
+        the circle is visible on the dash, so frame it against the round edge.</p>
+      <div class="row">
+        <button id="btnLoadImage">Choose a photo</button>
+        <button id="btnClearImage" disabled>Remove</button>
+      </div>
+
+      <label class="slider">Zoom
+        <input type="range" id="zoom" min="100" max="400" value="100">
+        <output id="zoomOut">1.00×</output>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="dither" checked>
+        <span><b>Smooth colour banding</b>
+          The dash stores 16-bit colour. Dithering hides the steps that photos of skies
+          and gradients otherwise show.</span>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="bgJpeg" checked>
+        <span><b>Send background as JPEG</b>
+          Sends the background compressed and lets the dash expand it, so the transfer is
+          a few seconds instead of nearly a minute. The dash still stores full-quality
+          16-bit colour. Turn off only if a background looks wrong after install.</span>
+      </label>
+
+      <label class="slider" id="bgQualityRow">Quality
+        <input type="range" id="bgQuality" min="60" max="95" value="85">
+        <output id="bgQualityOut">85</output>
+      </label>
+
+      <div class="row" style="margin-top:14px">
+        <input type="text" id="bgPath" value="img/gauge_bg_720.bin" aria-label="File path on the dash">
+        <button id="btnAddBg" disabled>Add to layout</button>
+      </div>
+    </section>
+
+    <section class="block" id="fontsBlock">
+      <h2>Fonts</h2>
+      <p class="hint">Add a TrueType or OpenType font, then the sizes you want. Each size
+        becomes its own font file on the dash, holding only the characters its labels can
+        show, so a big speedo font stays small. Use one by typing its name into a label's
+        Font field; the files rebuild themselves as you change those labels.</p>
+      <div class="row">
+        <button id="btnAddFont">Choose a font file</button>
+      </div>
+      <div id="fontCards"></div>
+      <div class="status hidden" id="fontStatus"></div>
+    </section>
+
+    <section class="block" id="elementBlock" style="display:none">
+      <h2>Selected element</h2>
+      <p class="hint">Coordinates are offsets from the centre of the screen. What an element
+        shows on the dash is set under “Reacts to”.</p>
+      <div id="elementFields"></div>
+    </section>
+
+    <section class="block" id="needsBlock" style="display:none">
+      <h2>What this layout needs</h2>
+      <p class="hint">Taken from the artwork and fonts the elements name. Anything the
+        firmware has built in is already covered; the rest has to be installed, or the
+        dash falls back to its built-in layout.</p>
+      <div class="naming">
+        Elements find their artwork at
+        <input type="text" id="namingDir" value="img/" size="5" aria-label="Folder">
+        <span>&lt;name&gt;</span>
+        <input type="text" id="namingExt" value=".bin" size="5" aria-label="Extension">
+        <button id="btnRepath" title="Move added files onto these paths">Re-match files</button>
+      </div>
+      <table class="assets">
+        <tbody id="needRows"></tbody>
+      </table>
+    </section>
+
+    <section class="block">
+      <h2>Files in this layout</h2>
+      <p class="hint">Converted artwork, built fonts, and anything else the layout needs.
+        Pre-built .bin images and fonts can be dropped straight in; a .ttf or .otf goes to
+        Fonts.</p>
+      <table class="assets">
+        <thead>
+          <tr><th>Path on the dash</th><th style="text-align:right">Size</th><th></th></tr>
+        </thead>
+        <tbody id="assetRows">
+          <tr><td colspan="3" class="empty-row">Nothing added yet.</td></tr>
+        </tbody>
+      </table>
+      <div class="row" style="margin-top:14px">
+        <button id="btnAddFile">Add an existing file</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Send it to the dash</h2>
+      <p class="hint">Everything the layout needs goes into one file. Move it to your phone
+        and choose it in the app's Update tab.</p>
+      <div class="row">
+        <button class="primary" id="btnExport" disabled>Export layout</button>
+      </div>
+      <details class="tool">
+        <summary>Export as separate files instead</summary>
+        <div class="body">
+          <p class="hint">For working over the wire with ftp1_send.py, or updating a single
+            asset by hand.</p>
+          <div class="row"><button id="btnExportLoose">Export loose files</button></div>
+        </div>
+      </details>
+      <div class="status hidden" id="exportStatus"></div>
+
+      <details class="tool">
+        <summary>Check a .bin file's header</summary>
+        <div class="body">
+          <p class="hint">Drop a working image file here to read its header. Use it to confirm
+            this tool writes the same format your firmware already loads.</p>
+          <div class="row"><button id="btnInspect">Choose a .bin file</button></div>
+          <pre class="readout" id="inspectOut">No file checked yet.</pre>
+        </div>
+      </details>
+    </section>
+
+    <section class="block" id="vehicleBlock">
+      <h2>Vehicle settings</h2>
+      <p class="hint">Per-bike numbers that live on the harness adapter, not in the layout:
+        they stay with the bike when the layout changes. Export vehicle.json, then import
+        it in the app's Vehicle tab and save it to the dash.</p>
+      <div class="row">
+        <button id="btnVehOpen">Open vehicle.json</button>
+        <button id="btnVehNew">Start from defaults</button>
+      </div>
+      <div class="status hidden" id="vehLoadStatus"></div>
+
+      <div id="vehFields" style="display:none">
+        <div class="subhead">Pulses</div>
+        <div class="field"><label>Tach</label>
+          <div class="pair tight"><input type="number" id="vehRpmPpr" min="1" max="16" step="1">
+            <span class="unit">per crank rev</span></div></div>
+        <div class="field"><label>Speed</label>
+          <div class="pair tight"><input type="number" id="vehSpeedPpr" min="1" max="64" step="1">
+            <span class="unit">per wheel rev</span></div></div>
+
+        <div class="subhead">Wheel</div>
+        <div class="field"><label>Circumference</label>
+          <div class="pair tight"><input type="number" id="vehWheel" min="100" max="4000" step="1">
+            <span class="unit">mm</span></div></div>
+        <div class="field"><label>From tire</label>
+          <div class="pair tight"><input type="text" id="vehTire" placeholder="180/55-17">
+            <button id="btnVehTire">Use</button></div></div>
+        <p class="curve-note" id="vehTireOut">Rolling circumference of the wheel the speed sensor reads.
+          Tire size gives an estimate; a roll-out measurement is better.</p>
+
+        <div id="vehCurves"></div>
+
+        <div class="row" style="margin-top:18px">
+          <button class="primary" id="btnVehExport">Export vehicle.json</button>
+        </div>
+        <p class="curve-note">The adapter type (universal / Ducati) isn't set here: it's written
+          into the adapter when it's built. An <code>"adapter"</code> key in this file only
+          counts on an adapter that hasn't been provisioned.</p>
+        <div class="status hidden" id="vehStatus"></div>
+      </div>
+    </section>
+
+    </div><!-- /paneBuild -->
+  </div>
+</main>
+
+<datalist id="srcList"></datalist>
+<datalist id="fontList"></datalist>
+<input type="file" id="fileJson" accept=".json,application/json" class="sr">
+<input type="file" id="fileImage" accept="image/*" class="sr">
+<input type="file" id="fileAny" multiple class="sr">
+<input type="file" id="fileBin" class="sr">
+<input type="file" id="fileFgl" accept=".fglayout" class="sr">
+<input type="file" id="fileVehicle" accept=".json,application/json" class="sr">
+<input type="file" id="fileFont" accept=".ttf,.otf,.woff,.woff2" multiple class="sr">
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ * LVGL 9 binary image format
+ *
+ * 12-byte header, little-endian bitfields packed into three uint32s:
+ *   magic:8 | cf:8 | flags:16   (magic 0x19 = "LVGL 9")
+ *   w:16    | h:16
+ *   stride:16 | reserved:16
+ * followed by raw pixel data, rows of `stride` bytes.
+ *
+ * The colour-format value is the one thing worth verifying rather than
+ * trusting: use "Check a .bin file's header" on artwork your firmware
+ * already renders and compare. If it disagrees, change CF_RGB565 below.
+ * ------------------------------------------------------------------ */
+const LV_MAGIC   = 0x19;
+const CF_RGB565  = 0x12;
+const CF_ARGB8888 = 0x10;
+const HEADER_LEN = 12;
+
+const DISPLAY_PX   = 720;
+const PARTITION_KB = 4096;
+
+/*
+ * Layout elements name their artwork logically -- "src": "gauge_bg_720" --
+ * and the firmware resolves that to a file. The folder and extension are
+ * editable in the UI so this matches whatever the firmware looks for.
+ */
+const naming = { dir: "img/", ext: ".bin" };
+const assetPathFor = src => `${naming.dir}${src}${naming.ext}`;
+/* Measured over the wired link; BLE runs a little slower. */
+const XFER_KBPS    = 22;
+
+/* ------------------------------------------------------------------ *
+ * Engine contract -- everything below mirrors flashgauge_layout.c and
+ * must stay in sync with it:
+ *   s_channels[], s_images[], s_fonts[], the LAYOUT_MAX_* caps, and
+ *   which bind kinds each element factory can actually reach.
+ * The JSON this tool writes is exactly what the parser reads: identity
+ * key "id", binding object "bind" with "channel", kind:"visible" as the
+ * only dispatched kind string (needles always rotate, bars take the bar
+ * value, labels use "format" unless "map" is present), needle pivot as
+ * an ARRAY [x,y], ranges as in_min/in_max, colours as "#RRGGBB".
+ * ------------------------------------------------------------------ */
+const MAX_ELEMENTS    = 32;  /* LAYOUT_MAX_ELEMENTS   */
+const MAX_BINDINGS    = 24;  /* LAYOUT_MAX_BINDINGS   */
+const MAX_MAP_ENTRIES = 8;   /* LAYOUT_MAX_MAP_ENTRIES */
+const MAX_MAP_TEXT    = 7;   /* LAYOUT_MAX_MAP_TEXT - 1 (strncpy)      */
+const MAX_FMT         = 15;  /* LAYOUT_MAX_FMT - 1                     */
+const MAX_SUFFIX      = 7;   /* LAYOUT_MAX_SUFFIX - 1                  */
+
+/* Data channels the firmware knows, with a plausible sample value each for
+ * the preview. kind: value | flag | time; unit: speed | distance | temp | none. */
+/* BEGIN channels.json */
+const CHANNELS = [   /* generated from channels.json -- edit that, not this */
+  { key: "rpm", label: "rpm", kind: "value", unit: "none", sample: 4200 },
+  { key: "speed", label: "speed", kind: "value", unit: "speed", sample: 680 },
+  { key: "gas", label: "low fuel", kind: "flag", unit: "none", sample: 1 },
+  { key: "neutral", label: "neutral", kind: "flag", unit: "none", sample: 1 },
+  { key: "blinker_l", label: "blinker left", kind: "flag", unit: "none", sample: 1 },
+  { key: "blinker_r", label: "blinker right", kind: "flag", unit: "none", sample: 1 },
+  { key: "oil", label: "oil pressure", kind: "flag", unit: "none", sample: 1 },
+  { key: "brights", label: "brights", kind: "flag", unit: "none", sample: 1 },
+  { key: "engine", label: "check engine", kind: "flag", unit: "none", sample: 1 },
+  { key: "odometer", label: "odometer", kind: "value", unit: "distance", sample: 123456 },
+  { key: "trip", label: "trip", kind: "value", unit: "distance", sample: 1234 },
+  { key: "oil_temp", label: "oil temperature", kind: "value", unit: "temp", sample: 194 },
+  { key: "coolant_temp", label: "coolant temperature", kind: "value", unit: "temp", sample: 186 },
+  { key: "oil_temp_ok", label: "oil temp sender present", kind: "flag", unit: "none", sample: 1 },
+  { key: "coolant_temp_ok", label: "coolant temp sender present", kind: "flag", unit: "none", sample: 0 },
+  { key: "clock", label: "clock", kind: "time", unit: "none", sample: 833 },
+  { key: "clock_h", label: "clock hours", kind: "value", unit: "none", sample: 1 },
+  { key: "clock_m", label: "clock minutes", kind: "value", unit: "none", sample: 53 },
+  { key: "clock_pm", label: "clock is PM", kind: "flag", unit: "none", sample: 1 },
+];
+/* END channels.json */
+const SAMPLE = Object.fromEntries(CHANNELS.map(c => [c.key, c.sample]));
+const chanInfo = key => CHANNELS.find(c => c.key === key) || null;
+
+/* Layout-level units block. The firmware converts once in its channel layer,
+ * so bindings never see anything but the chosen unit. Absent keys mean the
+ * firmware defaults: mph, °F, 12-hour. */
+const UNIT_DEFAULTS = { speed: "mph", temp: "f", clock: "12h" };
+function docUnits() {
+  const u = (state.doc && state.doc.units) || {};
+  return { speed: u.speed || UNIT_DEFAULTS.speed,
+           temp:  u.temp  || UNIT_DEFAULTS.temp,
+           clock: u.clock || UNIT_DEFAULTS.clock };
+}
+/* What suffix:"auto" resolves to on the dash (fg_channels_unit_label). */
+function unitLabel(chanKey) {
+  const c = chanInfo(chanKey); if (!c) return "";
+  const u = docUnits();
+  switch (c.unit) {
+    case "speed":    return u.speed === "kph" ? " km/h" : " mph";
+    case "distance": return u.speed === "kph" ? " km" : " mi";
+    case "temp":     return u.temp === "c" ? "°C" : "°F";
+    default:         return "";
+  }
+}
+/* Picker text: the raw label plus what the number actually is right now. */
+function chanLabel(c) {
+  const u = docUnits();
+  if (c.unit === "speed")    return `${c.label} (0.1${unitLabel(c.key)})`;
+  if (c.unit === "distance") return `${c.label} (0.1${unitLabel(c.key)})`;
+  if (c.unit === "temp")     return `${c.label} (${unitLabel(c.key)})`;
+  if (c.kind === "time")     return `${c.label} (${u.clock})`;
+  return c.label;
+}
+
+/* Compiled-in fallbacks: s_images[] and s_fonts[]. The firmware resolves
+ * src names filesystem-first, so these are what works WITHOUT installing
+ * a file -- an added file with the right path overrides them. */
+const COMPILED_IMAGES = [
+  "gauge_bg_720", "tachneedle", "blinker_lamp", "brights_lamp",
+  "engine_lamp", "gas_lamp", "neutral_lamp", "oilpressure_lamp",
+];
+const COMPILED_FONTS = ["montserrat_42", "montserrat_48"];
+const fontPathFor = name => `font/${name}.bin`;   /* resolve_font() is fixed */
+
+/* Bind modes each factory can reach. "none" only where a bind is optional;
+ * a needle without a bind and a bar without a bind are engine errors. */
+const BIND_MODES = {
+  image:  ["none", "visible"],
+  needle: ["rotation"],
+  label:  ["none", "fmt", "map", "visible"],
+  shape:  ["none", "visible"],
+  bar:    ["value", "visible"],
+};
+const MODE_NAMES = {
+  none: "nothing (static)", visible: "shows / hides", rotation: "rotates",
+  fmt: "shows a number", map: "shows mapped text", value: "fills",
+};
+
+function bindDefaults(mode, channel) {
+  switch (mode) {
+    case "rotation": return { channel: channel || "rpm", in_min: 0, in_max: 11000,
+                              angle_start: 2300, angle_sweep: 2600, deadband: 1,
+                              filter: 0, sweep: true, sweep_ms: 800 };
+    case "value":    return { channel: channel || "gas", in_min: 0, in_max: 255,
+                              deadband: 2, filter: 0.2, sweep: true, sweep_ms: 800 };
+    case "fmt":      return fmtDefaults(channel || "rpm");
+    case "map":      return { channel: channel || "neutral",
+                              map: [{ value: 1, text: "N" }], default: "-" };
+    case "visible":  return { kind: "visible", channel: channel || "neutral" };
+    default:         return null;
+  }
+}
+
+/* A "shows a number" bind for a channel: clocks get the time style, tenths
+ * channels get one decimal and the automatic unit suffix, flags get plain. */
+function fmtDefaults(channel) {
+  const c = chanInfo(channel);
+  if (c && c.kind === "time") return { channel, style: "time" };
+  const b = { channel, format: "%d" };
+  if (c && (c.unit === "distance"))       { b.decimals = 1; b.suffix = "auto"; }
+  else if (c && c.unit === "temp")        { b.suffix = "auto"; b.hide_when = channel + "_ok"; }
+  return b;
+}
+
+/* The bind's shape IS the mode -- nothing extra is stored in the JSON. */
+function bindMode(el) {
+  if (el.type === "needle") return "rotation";
+  if (el.type === "bar")    return (el.bind && el.bind.kind === "visible") ? "visible" : "value";
+  const b = el.bind;
+  if (!b) return "none";
+  if (b.kind === "visible") return "visible";
+  if (Array.isArray(b.map)) return "map";
+  return "fmt";
+}
+
+function makeElement(type) {
+  const els = state.doc?.elements || [];
+  const ids = new Set(els.map(e => e.id));
+  let n = 1;
+  while (ids.has(`${type}${n}`)) n++;
+  const e = { type, id: `${type}${n}`, x: 0, y: 0 };
+  if (type === "image")  { e.src = ""; }
+  if (type === "needle") { e.src = "tachneedle"; e.pivot = [36, 336];
+                           e.bind = bindDefaults("rotation"); }
+  if (type === "label")  { e.text = "0"; e.font = "montserrat_48"; e.color = "#f0f0f0"; }
+  if (type === "shape")  { e.w = 36; e.h = 36; e.bg = "#303030"; e.round = true; }
+  if (type === "bar")    { e.w = 180; e.h = 24; e.bg = "#202020"; e.fill = "#f2a93b";
+                           e.radius = 4; e.pad = 2; e.bind = bindDefaults("value"); }
+  return e;
+}
+
+const CF_NAMES = {
+  0x06: "L8", 0x07: "I1", 0x08: "I2", 0x09: "I4", 0x0A: "I8",
+  0x0E: "A8", 0x0F: "RGB888", 0x10: "ARGB8888", 0x11: "XRGB8888",
+  0x12: "RGB565", 0x13: "ARGB8565", 0x14: "RGB565A8",
+};
+
+/* ---------------------------------------------------------- CRC32 ---- */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) {
+    c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  }
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+const hex8 = n => "0x" + n.toString(16).toUpperCase().padStart(8, "0");
+
+function uuid4() {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+}
+
+/* --------------------------------------------------------- state ---- */
+const state = {
+  doc: null,            // the loaded dash.json object, widgets preserved
+  id: null,
+  revision: 0,
+  name: "Untitled layout",
+  assets: new Map(),    // path -> { bytes: Uint8Array, source: string }
+  inFirmware: new Set(),// user-marked as compiled into the firmware
+  userNeeds: new Set(), // user override: compiled name still needs a file
+  selected: null,       // index into doc.elements of the selected element
+  testAngle: null,      // deg to rotate the selected needle in preview, or null
+  fontFaces: new Map(), // font_sources base -> { id, family } loaded this session
+  fontFail: new Map(),  // font path -> signature that failed to build (no retry loop)
+  fontErr: new Map(),   // font path -> why it failed
+  img: null,            // HTMLImageElement
+  zoom: 1,
+  offX: 0,
+  offY: 0,
+};
+
+const $ = id => document.getElementById(id);
+
+/* Simulator state (see "simulator" below). Declared here because the preview
+ * code consults it on every draw. */
+const sim = {
+  on: false,
+  ch: {},                  /* channel values the layout sees (layout units) */
+  input: {},               /* what the controls / scenario set (before smoothing) */
+  flash: { blinker_l: false, blinker_r: false },
+  bind: new Map(),         /* element -> { filt, last } per binding */
+  sweepT: null,            /* ms since the startup sweep began, or null */
+  scenario: null, t: 0, paused: false,
+  raf: 0, acc: 0, lastTs: 0, uiTick: 0,
+  clockNow: true,
+};
+
+/* ------------------------------------------------- image → RGB565 ---- */
+/*
+ * Floyd–Steinberg error diffusion. Photographs quantised straight to 16-bit
+ * band badly across skies and gradients; spreading the rounding error into
+ * neighbouring pixels trades those bands for noise the eye ignores.
+ */
+function toRgb565(imageData, dither) {
+  const { width: w, height: h, data } = imageData;
+  const out = new Uint8Array(w * h * 2);
+
+  const err = dither ? new Float32Array(w * h * 3) : null;
+  let o = 0;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const e = (y * w + x) * 3;
+
+      let r = data[i], g = data[i + 1], b = data[i + 2];
+      if (dither) { r += err[e]; g += err[e + 1]; b += err[e + 2]; }
+
+      const r5 = Math.min(31, Math.max(0, Math.round(r * 31 / 255)));
+      const g6 = Math.min(63, Math.max(0, Math.round(g * 63 / 255)));
+      const b5 = Math.min(31, Math.max(0, Math.round(b * 31 / 255)));
+
+      if (dither) {
+        const dr = r - (r5 * 255 / 31);
+        const dg = g - (g6 * 255 / 63);
+        const db = b - (b5 * 255 / 31);
+        const spread = (dx, dy, f) => {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= w || ny >= h) return;
+          const ne = (ny * w + nx) * 3;
+          err[ne] += dr * f; err[ne + 1] += dg * f; err[ne + 2] += db * f;
+        };
+        spread(1, 0, 7 / 16);
+        spread(-1, 1, 3 / 16);
+        spread(0, 1, 5 / 16);
+        spread(1, 1, 1 / 16);
+      }
+
+      const px = (r5 << 11) | (g6 << 5) | b5;
+      out[o++] = px & 0xFF;          // little-endian
+      out[o++] = (px >> 8) & 0xFF;
+    }
+  }
+  return out;
+}
+
+function buildLvglImage(pixels, w, h, cf = CF_RGB565) {
+  const stride = w * (cf === CF_ARGB8888 ? 4 : 2);
+  const buf = new Uint8Array(HEADER_LEN + pixels.length);
+  const dv = new DataView(buf.buffer);
+  dv.setUint32(0, (LV_MAGIC) | (cf << 8) | (0 << 16), true);
+  dv.setUint32(4, (w & 0xFFFF) | ((h & 0xFFFF) << 16), true);
+  dv.setUint32(8, (stride & 0xFFFF), true);
+  buf.set(pixels, HEADER_LEN);
+  return buf;
+}
+
+/*
+ * ARGB8888 for artwork that needs transparency -- warning lamps and needles
+ * sit on top of the background, so their surrounding pixels must be
+ * see-through, and RGB565 has no alpha channel to carry that.
+ * LVGL stores these as lv_color32_t, which is blue, green, red, alpha in
+ * memory order.
+ */
+function toArgb8888(imageData) {
+  const { width: w, height: h, data } = imageData;
+  const out = new Uint8Array(w * h * 4);
+  for (let i = 0, o = 0; i < data.length; i += 4, o += 4) {
+    out[o]     = data[i + 2];   // blue
+    out[o + 1] = data[i + 1];   // green
+    out[o + 2] = data[i];       // red
+    out[o + 3] = data[i + 3];   // alpha
+  }
+  return out;
+}
+
+function hasTransparency(imageData) {
+  const d = imageData.data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] < 255) return true;
+  return false;
+}
+
+/*
+ * Convert a source image (PNG, JPEG, whatever the browser can decode) into
+ * the binary form the dash loads, at its own size. Transparency decides the
+ * colour format.
+ */
+async function convertImageToLvgl(file, dither) {
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error("could not decode"));
+    i.src = URL.createObjectURL(file);
+  });
+
+  const c = document.createElement("canvas");
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  const id = g.getImageData(0, 0, img.width, img.height);
+
+  if (hasTransparency(id)) {
+    return {
+      bytes: buildLvglImage(toArgb8888(id), img.width, img.height, CF_ARGB8888),
+      note: `${img.width}×${img.height} with transparency`,
+    };
+  }
+  return {
+    bytes: buildLvglImage(toRgb565(id, dither), img.width, img.height, CF_RGB565),
+    note: `${img.width}×${img.height}`,
+  };
+}
+
+function readLvglHeader(bytes) {
+  if (bytes.length < HEADER_LEN) return null;
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const w0 = dv.getUint32(0, true), w1 = dv.getUint32(4, true), w2 = dv.getUint32(8, true);
+  return {
+    magic: w0 & 0xFF,
+    cf: (w0 >>> 8) & 0xFF,
+    flags: (w0 >>> 16) & 0xFFFF,
+    w: w1 & 0xFFFF,
+    h: (w1 >>> 16) & 0xFFFF,
+    stride: w2 & 0xFFFF,
+    reserved: (w2 >>> 16) & 0xFFFF,
+  };
+}
+
+/* ------------------------------------------ decode for the preview ---- */
+/*
+ * Turn a stored RGB565 image back into something the canvas can draw, so
+ * the preview shows the real artwork rather than placeholders.
+ */
+const decodeCache = new Map();
+
+function decodeLvgl(bytes) {
+  const h = readLvglHeader(bytes);
+  if (!h || h.magic !== LV_MAGIC || h.w === 0 || h.h === 0) return null;
+  if (bytes.length < HEADER_LEN + h.stride * h.h) return null;
+
+  const c = document.createElement("canvas");
+  c.width = h.w; c.height = h.h;
+  const g = c.getContext("2d");
+  const id = g.createImageData(h.w, h.h);
+
+  if (h.cf === CF_RGB565) {
+    for (let y = 0; y < h.h; y++) {
+      let s = HEADER_LEN + y * h.stride;
+      let d = y * h.w * 4;
+      for (let x = 0; x < h.w; x++, s += 2, d += 4) {
+        const v = bytes[s] | (bytes[s + 1] << 8);
+        const r5 = (v >> 11) & 0x1F, g6 = (v >> 5) & 0x3F, b5 = v & 0x1F;
+        id.data[d]     = (r5 * 255 / 31) | 0;
+        id.data[d + 1] = (g6 * 255 / 63) | 0;
+        id.data[d + 2] = (b5 * 255 / 31) | 0;
+        id.data[d + 3] = 255;
+      }
+    }
+  } else if (h.cf === CF_ARGB8888) {
+    // Stored blue, green, red, alpha (lv_color32_t memory order).
+    for (let y = 0; y < h.h; y++) {
+      let s = HEADER_LEN + y * h.stride;
+      let d = y * h.w * 4;
+      for (let x = 0; x < h.w; x++, s += 4, d += 4) {
+        id.data[d]     = bytes[s + 2];   // red
+        id.data[d + 1] = bytes[s + 1];   // green
+        id.data[d + 2] = bytes[s];       // blue
+        id.data[d + 3] = bytes[s + 3];   // alpha
+      }
+    }
+  } else {
+    return null;   // unknown format
+  }
+
+  g.putImageData(id, 0, 0);
+  return c;
+}
+
+function assetCanvas(path) {
+  if (decodeCache.has(path)) return decodeCache.get(path);
+  const a = state.assets.get(path);
+  const c = a ? decodeLvgl(a.bytes) : null;
+  decodeCache.set(path, c);
+  return c;
+}
+
+/* ------------------------------------------------------- fonts ---- *
+ * TrueType / OpenType fonts, converted here in the browser into LVGL 9
+ * binary fonts -- the lv_font_conv "bin" layout that lv_binfont_create()
+ * loads from L:/font/<name>.bin. One file per size, cut down to the
+ * characters the labels using it can show.
+ *
+ * What the firmware allows (lvgl 9.4, LV_FONT_FMT_TXT_LARGE 0), which the
+ * converter checks every glyph against:
+ *   box_w / box_h  uint8     ofs_x / ofs_y  int8
+ *   adv_w          12 bits of 1/16 px (so under 256 px)
+ *   bitmap_index   20 bits  (a font under 1 MB)
+ * The whole font is loaded into the LVGL heap when the layout is built.
+ *
+ * File written: head (48 B) | cmap (one sparse-tiny table) | loca (u32) |
+ * glyf. Glyph records are 64 header bits -- adv 16 (1/16 px), ofs_x 12,
+ * ofs_y 12, box_w 12, box_h 12 -- then the bitmap at 4 bpp, MSB first,
+ * rows packed with no padding (bitmap_format PLAIN, stride 0). Glyph 0 is
+ * the reserved empty glyph. No kerning table (tables_count 3).
+ * ------------------------------------------------------------------ */
+const FONT_BPP        = 4;
+const FONT_MIN_PX     = 8;
+const FONT_MAX_PX     = 160;
+const MAX_FS_FONTS    = 8;     /* LAYOUT_MAX_FS_FONTS in the fonts-update firmware */
+const FONT_RAM_WARN   = 512 * 1024;
+const FONT_NAME_MAX   = 38;    /* "/font/%s.bin" has to fit LAYOUT_MAX_ASSET_PATH (48) */
+const ASCII_CHARS = (() => {
+  let s = "";
+  for (let c = 0x20; c < 0x7f; c++) s += String.fromCharCode(c);
+  return s + "\u00b0";
+})();
+
+/* doc.font_sources: [{ base, file, sizes: [px...], chars: "used"|"ascii", extra }]
+ * The firmware ignores the key; it's here so the fonts can be rebuilt after
+ * the layout is reopened and the same font file chosen again. */
+function fontSources() {
+  return Array.isArray(state.doc?.font_sources) ? state.doc.font_sources : [];
+}
+const fontName = (base, size) => `${base}_${size}`;
+
+function fontSlug(fileName) {
+  let s = fileName.replace(/\.[^.]+$/, "").toLowerCase()
+                  .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  if (!/^[a-z]/.test(s)) s = "f_" + s;
+  return s.slice(0, 24).replace(/_+$/, "") || "font";
+}
+
+/* ---- characters a label can show ---- */
+function labelChars(el) {
+  let s = el.text || "";
+  const b = el.bind;
+  if (b && b.kind !== "visible") {
+    if (Array.isArray(b.map)) {
+      for (const m of b.map) s += m.text || "";
+      s += b.default ?? "-";
+    } else {
+      if (b.style === "time") {
+        s += "0123456789:-";
+        if (docUnits().clock === "12h") s += " AMP";
+      } else {
+        s += "0123456789-";
+        if (Number(b.decimals) > 0) s += ".";
+        else s += (b.format || "%d").replace(/%[-0 +#]*\d*l?[diu]/g, "");
+      }
+      s += b.suffix === "auto" ? unitLabel(b.channel) : (b.suffix || "");
+    }
+  }
+  return s;
+}
+
+function labelsUsingFont(name) {
+  const els = Array.isArray(state.doc?.elements) ? state.doc.elements : [];
+  return els.filter(el => el && el.type === "label" && el.font === name);
+}
+
+/* Sorted, de-duplicated, printable BMP characters for one generated size. */
+function charsFor(src, name) {
+  let s = "";
+  for (const el of labelsUsingFont(name)) s += labelChars(el);
+  if (src.chars === "ascii") s += ASCII_CHARS;
+  s += src.extra || "";
+  const cps = new Set();
+  for (const ch of s) {
+    const cp = ch.codePointAt(0);
+    if (cp >= 0x20 && cp <= 0xffff && cp !== 0x7f) cps.add(cp);
+  }
+  if (!cps.size) for (const ch of "0123456789") cps.add(ch.codePointAt(0));
+  return [...cps].sort((a, b) => a - b).map(cp => String.fromCodePoint(cp)).join("");
+}
+
+/* ---- loading a font file ---- */
+/*
+ * Which characters the font really has, from its own cmap table (TTF/OTF).
+ * Returns null for containers it can't read directly (WOFF/WOFF2); then
+ * the measuring fallback in fontHasChar() is used instead.
+ */
+function sfntCoverage(bytes) {
+  try {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const ver = dv.getUint32(0);
+    if (ver !== 0x00010000 && ver !== 0x4f54544f && ver !== 0x74727565) return null;
+    const nt = dv.getUint16(4);
+    let cmap = -1;
+    for (let i = 0; i < nt; i++) {
+      const r = 12 + i * 16;
+      if (String.fromCharCode(bytes[r], bytes[r + 1], bytes[r + 2], bytes[r + 3]) === "cmap")
+        cmap = dv.getUint32(r + 8);
+    }
+    if (cmap < 0) return null;
+    const n = dv.getUint16(cmap + 2);
+    let best = -1, bestRank = 0;
+    for (let i = 0; i < n; i++) {
+      const r = cmap + 4 + i * 8;
+      const pid = dv.getUint16(r), eid = dv.getUint16(r + 2), off = cmap + dv.getUint32(r + 4);
+      const fmt = dv.getUint16(off);
+      const uni = pid === 0 || (pid === 3 && (eid === 1 || eid === 10));
+      const rank = !uni ? 0 : fmt === 12 ? 2 : fmt === 4 ? 1 : 0;
+      if (rank > bestRank) { best = off; bestRank = rank; }
+    }
+    if (best < 0) return null;
+    if (dv.getUint16(best) === 12) {
+      const groups = dv.getUint32(best + 12), g = [];
+      for (let i = 0; i < groups; i++) {
+        const r = best + 16 + i * 12;
+        g.push([dv.getUint32(r), dv.getUint32(r + 4), dv.getUint32(r + 8)]);
+      }
+      return cp => g.some(([a, b, gid]) => cp >= a && cp <= b && gid + cp - a !== 0);
+    }
+    const segX2 = dv.getUint16(best + 6), seg = segX2 / 2;
+    const endA = best + 14, startA = endA + segX2 + 2, deltaA = startA + segX2, rangeA = deltaA + segX2;
+    return cp => {
+      if (cp > 0xffff) return false;
+      for (let i = 0; i < seg; i++) {
+        const end = dv.getUint16(endA + i * 2);
+        if (cp > end) continue;
+        const start = dv.getUint16(startA + i * 2);
+        if (cp < start) return false;
+        const delta = dv.getUint16(deltaA + i * 2), ro = dv.getUint16(rangeA + i * 2);
+        if (ro === 0) return ((cp + delta) & 0xffff) !== 0;
+        const gAt = rangeA + i * 2 + ro + (cp - start) * 2;
+        const gid = dv.getUint16(gAt);
+        return gid !== 0 && ((gid + delta) & 0xffff) !== 0;
+      }
+      return false;
+    };
+  } catch { return null; }
+}
+
+let fontFaceSeq = 0;
+async function loadFontFace(bytes) {
+  const family = `fg_font_${++fontFaceSeq}`;
+  const face = new FontFace(family, bytes.buffer.slice(bytes.byteOffset,
+                                                       bytes.byteOffset + bytes.byteLength));
+  await face.load();
+  document.fonts.add(face);
+  return { id: fontFaceSeq, family, covers: sfntCoverage(bytes) };
+}
+
+/* ---- rasterising ---- */
+const rasterCv = document.createElement("canvas");
+const rasterCtx = rasterCv.getContext("2d", { willReadFrequently: true });
+
+/*
+ * A character the font doesn't have is drawn by the browser from some other
+ * font, silently. Measuring it with two different fallbacks behind the real
+ * family catches that: a glyph the font owns measures the same both ways.
+ */
+function fontHasChar(face, size, ch) {
+  if (face.covers) return face.covers(ch.codePointAt(0));
+  const family = face.family;
+  rasterCtx.font = `${size}px "${family}", monospace`;
+  const a = rasterCtx.measureText(ch).width;
+  rasterCtx.font = `${size}px "${family}", serif`;
+  const b = rasterCtx.measureText(ch).width;
+  return Math.abs(a - b) < 0.01;
+}
+
+function rasterizeFont(face, size, chars) {
+  const family = face.family;
+  const S = Math.ceil(size * 3) + 8;
+  if (rasterCv.width !== S) { rasterCv.width = S; rasterCv.height = S; }
+  const x0 = Math.round(size), y0 = Math.round(size * 2);
+
+  const glyphs = [], missing = [];
+  let top = 0, bottom = 0;
+  for (const ch of chars) {
+    if (ch !== " " && !fontHasChar(face, size, ch)) { missing.push(ch); continue; }
+    rasterCtx.font = `${size}px "${family}", monospace`;
+    rasterCtx.textBaseline = "alphabetic";
+    rasterCtx.textAlign = "left";
+    rasterCtx.fillStyle = "#fff";
+    rasterCtx.clearRect(0, 0, S, S);
+    rasterCtx.fillText(ch, x0, y0);
+    const adv = Math.round(rasterCtx.measureText(ch).width * 16);
+    const d = rasterCtx.getImageData(0, 0, S, S).data;
+
+    let l = S, t = S, r = -1, b = -1;
+    for (let y = 0; y < S; y++) {
+      const row = y * S * 4;
+      for (let x = 0; x < S; x++) {
+        if (d[row + x * 4 + 3] >= 9) {          /* rounds to a nonzero 4-bit level */
+          if (x < l) l = x; if (x > r) r = x;
+          if (y < t) t = y; if (y > b) b = y;
+        }
+      }
+    }
+    const g = { cp: ch.codePointAt(0), ch, adv, ox: 0, oy: 0, w: 0, h: 0, px: null };
+    if (r >= 0) {
+      g.w = r - l + 1; g.h = b - t + 1;
+      g.ox = l - x0;
+      g.oy = y0 - (b + 1);               /* bottom of the box, up from the baseline */
+      g.px = new Uint8Array(g.w * g.h);
+      for (let y = 0; y < g.h; y++)
+        for (let x = 0; x < g.w; x++)
+          g.px[y * g.w + x] = Math.round(d[((t + y) * S + (l + x)) * 4 + 3] / 17);
+      top = Math.max(top, g.oy + g.h);
+      bottom = Math.min(bottom, g.oy);
+    }
+    if (g.w > 255 || g.h > 255 || g.ox < -128 || g.ox > 127 ||
+        g.oy < -128 || g.oy > 127 || adv > 4095)
+      throw new Error(`"${ch}" at ${size} px is bigger than the dash's font format ` +
+                      `allows (255 px box, 255 px advance) — use a smaller size`);
+    glyphs.push(g);
+  }
+
+  rasterCtx.font = `${size}px "${family}", monospace`;
+  const m = rasterCtx.measureText("Hg");
+  let ascent  = Math.round(m.fontBoundingBoxAscent  ?? m.actualBoundingBoxAscent  ?? size * 0.8);
+  let descent = -Math.round(m.fontBoundingBoxDescent ?? m.actualBoundingBoxDescent ?? size * 0.2);
+  /* LVGL clips glyphs to the label's line box, so the box has to hold them. */
+  ascent = Math.max(ascent, top);
+  descent = Math.min(descent, bottom);
+  return { glyphs, missing, ascent, descent, minY: bottom, maxY: top };
+}
+
+/* ---- writing the LVGL binary ---- */
+class ByteOut {
+  constructor() { this.a = []; }
+  u8(v)  { this.a.push(v & 0xff); }
+  u16(v) { this.u8(v); this.u8(v >> 8); }
+  u32(v) { this.u16(v & 0xffff); this.u16((v >>> 16) & 0xffff); }
+  tag(s) { for (const c of s) this.u8(c.charCodeAt(0)); }
+  bytes(b) { for (const v of b) this.a.push(v); }
+  pad4() { while (this.a.length % 4) this.a.push(0); }
+  get length() { return this.a.length; }
+}
+
+/* A section: u32 length (label included) + 4-char label + body, padded to 4. */
+function fontSection(label, body) {
+  const o = new ByteOut();
+  const len = (8 + body.length + 3) & ~3;
+  o.u32(len); o.tag(label); o.bytes(body.a);
+  o.pad4();
+  return o;
+}
+
+function glyphRecord(g) {
+  const bits = [];
+  const put = (v, n) => { for (let i = n - 1; i >= 0; i--) bits.push((v >>> i) & 1); };
+  put(g.adv, 16);
+  put(g.ox & 0xfff, 12);
+  put(g.oy & 0xfff, 12);
+  put(g.w, 12);
+  put(g.h, 12);
+  if (g.px) for (const v of g.px) put(v, FONT_BPP);
+  while (bits.length % 8) bits.push(0);
+  const out = new Uint8Array(bits.length / 8);
+  for (let i = 0; i < out.length; i++) {
+    let v = 0;
+    for (let k = 0; k < 8; k++) v = (v << 1) | bits[i * 8 + k];
+    out[i] = v;
+  }
+  return out;
+}
+
+function buildBinfont(size, r) {
+  const gl = r.glyphs;                     /* already in code-point order */
+  const n = gl.length;
+
+  const head = new ByteOut();
+  head.u32(1);            /* version */
+  head.u16(3);            /* tables: head, cmap, loca+glyf (no kern) */
+  head.u16(size);
+  head.u16(r.ascent);
+  head.u16(r.descent);    /* int16 */
+  head.u16(r.ascent);     /* typo_ascent */
+  head.u16(r.descent);    /* typo_descent */
+  head.u16(0);            /* typo_line_gap */
+  head.u16(r.minY);
+  head.u16(r.maxY);
+  head.u16(0);            /* default_advance_width (unused: adv bits > 0) */
+  head.u16(0);            /* kerning_scale */
+  head.u8(1);             /* index_to_loc_format: u32 offsets */
+  head.u8(1);             /* glyph_id_format: u16 */
+  head.u8(1);             /* advance_width_format: stored in 1/16 px */
+  head.u8(FONT_BPP);
+  head.u8(12);            /* xy_bits */
+  head.u8(12);            /* wh_bits */
+  head.u8(16);            /* advance_width_bits */
+  head.u8(0);             /* compression: plain */
+  head.u8(0);             /* subpixels */
+  head.u8(0);             /* padding */
+  head.u16(0);            /* underline_position */
+  head.u16(0);            /* underline_thickness */
+
+  const first = n ? gl[0].cp : 0x20;
+  const cmap = new ByteOut();
+  cmap.u32(1);                    /* one subtable */
+  cmap.u32(8 + 4 + 16);           /* its data, from the start of the section */
+  cmap.u32(first);                /* range_start */
+  cmap.u16(n ? gl[n - 1].cp - first + 1 : 0);
+  cmap.u16(1);                    /* glyph_id_start (0 is reserved) */
+  cmap.u16(n);                    /* data_entries_count */
+  cmap.u8(3);                     /* LV_FONT_FMT_TXT_CMAP_SPARSE_TINY */
+  cmap.u8(0);
+  for (const g of gl) cmap.u16(g.cp - first);
+
+  const recs = [glyphRecord({ adv: 0, ox: 0, oy: 0, w: 0, h: 0, px: null })];
+  for (const g of gl) recs.push(glyphRecord(g));
+  const glyf = new ByteOut();
+  const offsets = [];
+  for (const rec of recs) { offsets.push(8 + glyf.length); glyf.bytes(rec); }
+  if (8 + glyf.length > (1 << 20))
+    throw new Error(`${size} px with these characters is over the 1 MB a font can be`);
+
+  const loca = new ByteOut();
+  loca.u32(recs.length);
+  for (const o of offsets) loca.u32(o);
+
+  const parts = [fontSection("head", head), fontSection("cmap", cmap),
+                 fontSection("loca", loca), fontSection("glyf", glyf)];
+  const total = parts.reduce((s, p) => s + p.length, 0);
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) { out.set(p.a, at); at += p.length; }
+  return out;
+}
+
+/* ---- reading one back (preview + checks; also reads lv_font_conv output) ---- */
+const binfontCache = new WeakMap();   /* bytes -> parsed font | null */
+
+function parseBinfont(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const tag = (o, s) => String.fromCharCode(bytes[o + 4], bytes[o + 5],
+                                            bytes[o + 6], bytes[o + 7]) === s;
+  if (bytes.length < 48 || !tag(0, "head")) throw new Error("not an LVGL font (no head)");
+  const headLen = dv.getUint32(0, true);
+  const h = {
+    size: dv.getUint16(14, true), ascent: dv.getUint16(16, true),
+    descent: dv.getInt16(18, true), defAdv: dv.getUint16(30, true),
+    locFmt: bytes[34], advFmt: bytes[36], bpp: bytes[37],
+    xy: bytes[38], wh: bytes[39], advBits: bytes[40], compr: bytes[41],
+  };
+
+  const cm = headLen;
+  if (!tag(cm, "cmap")) throw new Error("no cmap section");
+  const cmLen = dv.getUint32(cm, true);
+  const cmN = dv.getUint32(cm + 8, true);
+  const map = [];   /* [cp, gid] */
+  for (let i = 0; i < cmN; i++) {
+    const t = cm + 12 + i * 16;
+    const dOfs = cm + dv.getUint32(t, true), start = dv.getUint32(t + 4, true);
+    const rlen = dv.getUint16(t + 8, true), gid0 = dv.getUint16(t + 10, true);
+    const cnt = dv.getUint16(t + 12, true), fmt = bytes[t + 14];
+    if (fmt === 0) for (let k = 0; k < cnt; k++) map.push([start + k, gid0 + bytes[dOfs + k]]);
+    else if (fmt === 2) for (let k = 0; k < rlen; k++) map.push([start + k, gid0 + k]);
+    else {
+      for (let k = 0; k < cnt; k++) {
+        const cp = start + dv.getUint16(dOfs + k * 2, true);
+        const gid = fmt === 1 ? gid0 + dv.getUint16(dOfs + cnt * 2 + k * 2, true) : gid0 + k;
+        map.push([cp, gid]);
+      }
+    }
+  }
+
+  const lo = cm + cmLen;
+  if (!tag(lo, "loca")) throw new Error("no loca section");
+  const loLen = dv.getUint32(lo, true), locN = dv.getUint32(lo + 8, true);
+  const offs = [];
+  for (let i = 0; i < locN; i++)
+    offs.push(h.locFmt === 0 ? dv.getUint16(lo + 12 + i * 2, true) : dv.getUint32(lo + 12 + i * 4, true));
+
+  const gf = lo + loLen;
+  if (!tag(gf, "glyf")) throw new Error("no glyf section");
+  const gfLen = dv.getUint32(gf, true);
+
+  const scale = [0, 255, 85, 36, 17, 0, 0, 0, 1][h.bpp] || 17;
+  const glyphs = [];
+  let bitmapBytes = 0;
+  for (let i = 0; i < locN; i++) {
+    let pos = (gf + offs[i]) * 8;
+    const rd = n => { let v = 0; while (n--) { v = (v << 1) | ((bytes[pos >> 3] >> (7 - (pos & 7))) & 1); pos++; } return v; };
+    const rds = n => { const v = rd(n); return v & (1 << (n - 1)) ? v - (1 << n) : v; };
+    let adv = h.advBits ? rd(h.advBits) : h.defAdv;
+    if (h.advFmt === 0) adv *= 16;
+    const g = { adv, ox: rds(h.xy), oy: rds(h.xy), w: rd(h.wh), h: rd(h.wh), a: null };
+    if (i === 0) { glyphs.push({ adv: 0, ox: 0, oy: 0, w: 0, h: 0, a: null }); continue; }
+    const end = i < locN - 1 ? offs[i + 1] : gfLen;
+    if (g.w * g.h) bitmapBytes += end - offs[i] - Math.floor((h.advBits + 2 * h.xy + 2 * h.wh) / 8);
+    if (g.w * g.h && h.compr === 0) {
+      g.a = new Uint8Array(g.w * g.h);
+      for (let k = 0; k < g.a.length; k++) g.a[k] = h.bpp === 3 ? Math.round(rd(3) * 255 / 7)
+                                                              : Math.min(255, rd(h.bpp) * scale);
+    }
+    glyphs.push(g);
+  }
+
+  const byCp = new Map();
+  for (const [cp, gid] of map) if (gid > 0 && gid < glyphs.length) byCp.set(cp, glyphs[gid]);
+  return {
+    size: h.size, lineHeight: h.ascent - h.descent, baseLine: -h.descent,
+    ascent: h.ascent, compressed: h.compr !== 0, bpp: h.bpp, glyphs: byCp,
+    /* lv_binfont_create() heap: glyph_dsc (8 B each) + bitmaps + cmap lists + structs */
+    ram: glyphs.length * 8 + bitmapBytes + byCp.size * 4 + 160,
+  };
+}
+
+function binfontFromBytes(bytes) {
+  if (binfontCache.has(bytes)) return binfontCache.get(bytes);
+  let f = null;
+  try { f = parseBinfont(bytes); } catch { f = null; }
+  binfontCache.set(bytes, f);
+  return f;
+}
+
+/* The parsed font a label will get on the dash, or null when it uses a
+ * compiled-in font (or one this preview can't read). */
+function labelBinfont(el) {
+  if (!el.font) return null;
+  const a = state.assets.get(fontPathFor(el.font));
+  const f = a ? binfontFromBytes(a.bytes) : null;
+  return f && !f.compressed ? f : null;
+}
+
+function missingGlyphs(font, text) {
+  const out = new Set();
+  for (const ch of text) if (!font.glyphs.has(ch.codePointAt(0))) out.add(ch);
+  return [...out];
+}
+
+/* ---- drawing text the way lv_label does ---- */
+const textCache = new Map();
+let fontIdSeq = 0;
+const fontIds = new WeakMap();
+
+function binTextWidth(font, text) {
+  let w = 0;
+  for (const ch of text) {
+    const g = font.glyphs.get(ch.codePointAt(0));
+    w += g ? (g.adv + 8) >> 4 : Math.round(font.lineHeight * 0.5);
+  }
+  return w;
+}
+
+/* Renders into a canvas the size of the label object (text width x line
+ * height), glyphs placed exactly as lv_draw_label places them. Characters
+ * the font lacks are drawn as a red box. */
+function binTextCanvas(font, text, color) {
+  if (!fontIds.has(font)) fontIds.set(font, ++fontIdSeq);
+  const key = `${fontIds.get(font)}|${color}|${text}`;
+  if (textCache.has(key)) return textCache.get(key);
+
+  const W = Math.max(1, binTextWidth(font, text)), H = Math.max(1, font.lineHeight);
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const cx = c.getContext("2d");
+  const img = cx.createImageData(W, H);
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color || "") || [0, "f0", "f0", "f0"];
+  const R = parseInt(m[1], 16), G = parseInt(m[2], 16), B = parseInt(m[3], 16);
+  const boxes = [];
+  let pen = 0;
+  for (const ch of text) {
+    const g = font.glyphs.get(ch.codePointAt(0));
+    if (!g) {
+      const w = Math.round(font.lineHeight * 0.5);
+      boxes.push([pen + 2, 2, w - 4, H - 4]);
+      pen += w;
+      continue;
+    }
+    if (g.a) {
+      const gx = pen + g.ox, gy = font.ascent - g.h - g.oy;
+      for (let y = 0; y < g.h; y++) {
+        const py = gy + y;
+        if (py < 0 || py >= H) continue;
+        for (let x = 0; x < g.w; x++) {
+          const px = gx + x;
+          if (px < 0 || px >= W) continue;
+          const a = g.a[y * g.w + x];
+          const o = (py * W + px) * 4;
+          if (a > img.data[o + 3]) {
+            img.data[o] = R; img.data[o + 1] = G; img.data[o + 2] = B; img.data[o + 3] = a;
+          }
+        }
+      }
+    }
+    pen += (g.adv + 8) >> 4;
+  }
+  cx.putImageData(img, 0, 0);
+  if (boxes.length) {
+    cx.strokeStyle = "#e2484d"; cx.lineWidth = 2;
+    for (const [x, y, w, h] of boxes) cx.strokeRect(x, y, Math.max(2, w), Math.max(2, h));
+  }
+  if (textCache.size > 300) textCache.clear();
+  textCache.set(key, c);
+  return c;
+}
+
+/* ---- keeping the generated files in step with the labels ---- */
+let fontSyncTimer = 0;
+
+function makeFontBin(face, size, chars) {
+  const r = rasterizeFont(face, size, chars);
+  return { bytes: buildBinfont(size, r), glyphs: r.glyphs.length, missing: r.missing };
+}
+
+/*
+ * Called on every preview draw. Cheap unless something a generated font
+ * depends on changed (a label's text, format, map, font choice, the units,
+ * the character settings); then just those sizes are rebuilt.
+ */
+function syncFonts() {
+  if (!state.doc) return;
+  let changed = false;
+  const want = new Set();
+  for (const src of fontSources()) {
+    const face = state.fontFaces.get(src.base);
+    for (const size of src.sizes || []) {
+      const name = fontName(src.base, size), path = fontPathFor(name);
+      want.add(path);
+      if (!face) continue;                 /* keep the file it came with */
+      const chars = charsFor(src, name);
+      const sig = `${face.id}|${size}|${chars}`;
+      const a = state.assets.get(path);
+      if (a && a.gen && a.gen.sig === sig) continue;
+      if (state.fontFail.get(path) === sig) continue;
+      try {
+        const r = makeFontBin(face, size, chars);
+        state.assets.set(path, { bytes: r.bytes, source: "font",
+                                 gen: { sig, glyphs: r.glyphs, missing: r.missing } });
+        state.fontFail.delete(path);
+      } catch (err) {
+        state.fontFail.set(path, sig);
+        state.fontErr.set(path, err.message);
+      }
+      changed = true;
+    }
+  }
+  for (const [path, a] of state.assets)
+    if (a.source === "font" && !want.has(path)) { state.assets.delete(path); changed = true; }
+  if (changed) {
+    clearTimeout(fontSyncTimer);
+    fontSyncTimer = setTimeout(renderAssets, 0);
+  }
+}
+
+/* ---- the Fonts panel ---- */
+function ensureDoc() {
+  if (state.doc) return;
+  state.doc = { version: 1, screen: { w: DISPLAY_PX, h: DISPLAY_PX }, elements: [] };
+  state.id = uuid4();
+  state.revision = 0;
+  state.name = "Untitled layout";
+  renderIdentity();
+  say("layoutStatus", "Started a blank layout for you.");
+}
+
+async function addFontFile(f) {
+  const bytes = await readBytes(f);
+  let face;
+  try { face = await loadFontFace(bytes); }
+  catch { throw new Error(`${f.name} couldn't be read as a font (TTF, OTF, WOFF or WOFF2)`); }
+  ensureDoc();
+  if (!Array.isArray(state.doc.font_sources)) state.doc.font_sources = [];
+  const srcs = state.doc.font_sources;
+
+  /* Same file as a font this layout already names: reattach it, so its
+   * sizes can be rebuilt. Otherwise it's a new font. */
+  let src = srcs.find(s => (s.file || "").toLowerCase() === f.name.toLowerCase() &&
+                           !state.fontFaces.has(s.base));
+  const reattached = !!src;
+  if (!src) {
+    const stem = fontSlug(f.name);
+    let base = stem, k = 2;
+    while (srcs.some(s => s.base === base)) base = `${stem}_${k++}`;
+    src = { base, file: f.name, sizes: [], chars: "used", extra: "" };
+    srcs.push(src);
+  }
+  state.fontFaces.set(src.base, face);
+  for (const size of src.sizes || []) state.fontFail.delete(fontPathFor(fontName(src.base, size)));
+  renderAssets();
+  return reattached
+    ? `${f.name} is back — its ${src.sizes.length} size${src.sizes.length === 1 ? "" : "s"} ` +
+      `will follow your labels again.`
+    : `Added ${f.name} as "${src.base}". Add the sizes you need below.`;
+}
+
+function removeFontSize(src, size) {
+  src.sizes = (src.sizes || []).filter(s => s !== size);
+  const path = fontPathFor(fontName(src.base, size));
+  state.assets.delete(path);
+  state.fontErr.delete(path);
+  state.fontFail.delete(path);
+  renderAssets();
+}
+
+function fontChip(src, size) {
+  const name = fontName(src.base, size), path = fontPathFor(name);
+  const a = state.assets.get(path);
+  const f = a ? binfontFromBytes(a.bytes) : null;
+  const users = labelsUsingFont(name).map(el => el.id);
+  const chip = document.createElement("div");
+  chip.className = "fchip";
+  const t = document.createElement("span");
+  t.className = "fname";
+  t.textContent = name;
+  const info = document.createElement("span");
+  info.className = "finfo";
+  const err = state.fontErr.get(path);
+  if (state.fontFail.has(path) && err) {
+    info.textContent = err;
+    info.style.color = "var(--redline)";
+  } else if (a) {
+    const n = f ? f.glyphs.size : "?";
+    info.textContent = `${n} characters · ${fmtKB(a.bytes.length)}` +
+      (users.length ? ` · ${users.join(", ")}` : " · no label uses it yet");
+    if (a.gen && a.gen.missing && a.gen.missing.length) {
+      info.textContent += ` · the font has no ${a.gen.missing.map(c => `“${c}”`).join(" ")}`;
+      info.style.color = "var(--amber)";
+    }
+  } else {
+    info.textContent = "not built — choose the font file again";
+    info.style.color = "var(--redline)";
+  }
+  const rm = document.createElement("button");
+  rm.textContent = "×";
+  rm.title = `Remove the ${size} px size`;
+  rm.onclick = () => removeFontSize(src, size);
+  chip.append(t, info, rm);
+  return chip;
+}
+
+function renderFonts() {
+  const host = $("fontCards");
+  if (!host) return;
+  host.innerHTML = "";
+  const srcs = fontSources();
+  for (const src of srcs) {
+    const face = state.fontFaces.get(src.base);
+    const card = document.createElement("div");
+    card.className = "fcard";
+
+    const head = document.createElement("div");
+    head.className = "fhead";
+    const nm = document.createElement("b");
+    nm.textContent = src.base;
+    const file = document.createElement("span");
+    file.textContent = src.file || "";
+    const del = document.createElement("button");
+    del.textContent = "Remove font";
+    del.onclick = () => {
+      for (const s of [...(src.sizes || [])]) removeFontSize(src, s);
+      state.doc.font_sources = fontSources().filter(s => s !== src);
+      if (!state.doc.font_sources.length) delete state.doc.font_sources;
+      state.fontFaces.delete(src.base);
+      renderAssets();
+    };
+    head.append(nm, file, del);
+    card.appendChild(head);
+
+    const sample = document.createElement("div");
+    sample.className = "fsample";
+    if (face) {
+      sample.style.fontFamily = `"${face.family}", monospace`;
+      sample.textContent = "0123456789 ABC abc °";
+    } else {
+      sample.className = "fsample missing";
+      sample.textContent = `Choose ${src.file || "the font file"} again to add sizes or ` +
+        `characters. The sizes already built still install and draw as they are.`;
+    }
+    card.appendChild(sample);
+
+    for (const size of (src.sizes || []).slice().sort((a, b) => a - b))
+      card.appendChild(fontChip(src, size));
+
+    if (face) {
+      const add = document.createElement("div");
+      add.className = "row";
+      add.style.marginTop = "10px";
+      const inp = document.createElement("input");
+      inp.type = "number"; inp.min = FONT_MIN_PX; inp.max = FONT_MAX_PX; inp.step = 1;
+      inp.placeholder = "px"; inp.className = "fsize";
+      inp.setAttribute("aria-label", "Size in pixels");
+      const btn = document.createElement("button");
+      btn.textContent = "Add size";
+      const go = () => {
+        const v = Math.round(Number(inp.value));
+        if (!(v >= FONT_MIN_PX && v <= FONT_MAX_PX)) {
+          say("fontStatus", `Sizes run from ${FONT_MIN_PX} to ${FONT_MAX_PX} px.`, true);
+          return;
+        }
+        if ((src.sizes || []).includes(v)) { say("fontStatus", `${fontName(src.base, v)} is already there.`); return; }
+        if (fontName(src.base, v).length > FONT_NAME_MAX) {
+          say("fontStatus", `"${fontName(src.base, v)}" is too long a name for the dash.`, true);
+          return;
+        }
+        src.sizes = [...(src.sizes || []), v];
+        $("fontStatus").classList.add("hidden");
+        renderAssets();
+        const sel = currentElement();
+        say("fontStatus", `Built ${fontName(src.base, v)}. ` +
+          (sel && sel.type === "label"
+            ? `Type it into ${sel.id}'s Font field to use it.`
+            : `Pick it in a label's Font field to use it.`));
+      };
+      btn.onclick = go;
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+      add.append(inp, btn);
+      card.appendChild(add);
+
+      const chRow = document.createElement("div");
+      chRow.className = "field";
+      chRow.style.marginTop = "10px";
+      const chl = document.createElement("label");
+      chl.textContent = "Characters";
+      const sel = document.createElement("select");
+      for (const [v, t] of [["used", "Only what its labels show"],
+                            ["ascii", "All of ASCII, plus °"]]) {
+        const o = document.createElement("option");
+        o.value = v; o.textContent = t;
+        sel.appendChild(o);
+      }
+      sel.value = src.chars === "ascii" ? "ascii" : "used";
+      sel.onchange = () => { src.chars = sel.value; renderAssets(); };
+      chRow.append(chl, sel);
+      card.appendChild(chRow);
+
+      const exRow = document.createElement("div");
+      exRow.className = "field";
+      const exl = document.createElement("label");
+      exl.textContent = "Also include";
+      const ex = document.createElement("input");
+      ex.type = "text"; ex.spellcheck = false;
+      ex.placeholder = "extra characters, e.g. ÄÖÜ";
+      ex.value = src.extra || "";
+      ex.addEventListener("change", () => {
+        if (ex.value) src.extra = ex.value; else delete src.extra;
+        renderAssets();
+      });
+      exRow.append(exl, ex);
+      card.appendChild(exRow);
+    }
+    host.appendChild(card);
+  }
+}
+
+$("btnAddFont").onclick = () => $("fileFont").click();
+$("fileFont").onchange = async e => {
+  const notes = [];
+  let bad = false;
+  for (const f of e.target.files) {
+    try { notes.push(await addFontFile(f)); }
+    catch (err) { notes.push(err.message); bad = true; }
+  }
+  say("fontStatus", notes.join("\n"), bad);
+  e.target.value = "";
+};
+
+/* ------------------------------------------------------- preview ---- */
+const cv = $("preview");
+const ctx = cv.getContext("2d", { willReadFrequently: true });
+
+/*
+ * Is the working photo actually in the layout? It counts only when some image
+ * element names the asset that "Add background" produced. An asset sitting in
+ * the file list with nothing pointing at it transfers to the dash and is never
+ * drawn, which is invisible unless the preview says so.
+ */
+function backgroundAssetPath() {
+  for (const [path, a] of state.assets) if (a.source === "background") return path;
+  return null;
+}
+function backgroundElement() {
+  const path = backgroundAssetPath();
+  if (!path || !Array.isArray(state.doc?.elements)) return null;
+  return state.doc.elements.find(
+    el => el && el.type === "image" && el.src && assetPathFor(el.src) === path) || null;
+}
+
+function drawPreview() {
+  syncFonts();
+  ctx.clearRect(0, 0, DISPLAY_PX, DISPLAY_PX);
+  ctx.fillStyle = "#0b0d10";
+  ctx.fillRect(0, 0, DISPLAY_PX, DISPLAY_PX);
+
+  /*
+   * The photo is drawn here only while it isn't part of the layout yet, so the
+   * crop controls have something to frame against -- and it's drawn faint, so
+   * it can't be mistaken for what the dash will show. Once an element points at
+   * it, drawElements() draws the converted asset instead, which is the same
+   * path every other image takes and shows the real 16-bit result.
+   */
+  const bgEl = backgroundElement();
+  const loose = !!state.img && !bgEl;
+  if (loose) {
+    const im = state.img;
+    const cover = Math.max(DISPLAY_PX / im.width, DISPLAY_PX / im.height);
+    const s = cover * state.zoom;
+    const dw = im.width * s, dh = im.height * s;
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.drawImage(im, (DISPLAY_PX - dw) / 2 + state.offX,
+                      (DISPLAY_PX - dh) / 2 + state.offY, dw, dh);
+    ctx.restore();
+  }
+
+  drawElements();
+  if (!sim.on) drawSelection();
+
+  // Everything outside the circle is invisible on the dash; show that.
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.beginPath();
+  ctx.arc(DISPLAY_PX / 2, DISPLAY_PX / 2, DISPLAY_PX / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  if (loose) {
+    ctx.save();
+    ctx.font = "600 26px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f0b429";
+    ctx.fillText("Photo not in the layout yet", DISPLAY_PX / 2, DISPLAY_PX / 2 - 12);
+    ctx.font = "400 20px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillStyle = "#c9a227";
+    ctx.fillText("Frame it, then press Add to layout", DISPLAY_PX / 2, DISPLAY_PX / 2 + 18);
+    ctx.restore();
+  }
+
+  $("dialWrap").classList.toggle("has-image", !!state.img);
+}
+
+/*
+ * Screen-space bounds of an element, as {cx, cy, w, h} centred on its
+ * anchor point. Single source for both rendering highlights and hit-testing
+ * so selection and drawing can never drift apart. Returns null for elements
+ * with no meaningful footprint.
+ */
+function elementBounds(el) {
+  const cx = DISPLAY_PX / 2 + (Number(el.x) || 0);
+  const cy = DISPLAY_PX / 2 + (Number(el.y) || 0);
+
+  if (el.type === "image") {
+    const art = el.src ? assetCanvas(assetPathFor(el.src)) : null;
+    const w = art ? art.width : 80, h = art ? art.height : 80;
+    return { cx, cy, w, h, ax: cx - w / 2, ay: cy - h / 2 };
+  }
+  if (el.type === "needle") {
+    const art = el.src ? assetCanvas(assetPathFor(el.src)) : null;
+    const pv = Array.isArray(el.pivot) ? el.pivot : [0, 0];
+    // Image centre is at (cx,cy) (lv_obj_align CENTER); the hub is where the
+    // pivot lands, offset from that centre. cx/cy here become the hub so the
+    // selection dot marks the true rotation point.
+    if (art) {
+      const hubx = cx + (pv[0] - art.width / 2);
+      const huby = cy + (pv[1] - art.height / 2);
+      return { cx: hubx, cy: huby, w: art.width, h: art.height,
+               ax: cx - art.width / 2, ay: cy - art.height / 2 };
+    }
+    return { cx, cy, w: 12, h: 120, ax: cx - 6, ay: cy - 60 };
+  }
+  if (el.type === "label") {
+    const txt = labelPreviewText(el);
+    const bf = labelBinfont(el);
+    if (bf) {
+      // lv_label sizes to its text (width) and the font's line height, and
+      // lv_obj_align(CENTER) places that box -- same maths as the draw.
+      const w = Math.max(1, binTextWidth(bf, txt)), h = Math.max(1, bf.lineHeight);
+      const ax = (DISPLAY_PX >> 1) - (w >> 1) + (Number(el.x) || 0);
+      const ay = (DISPLAY_PX >> 1) - (h >> 1) + (Number(el.y) || 0);
+      return { cx: ax + w / 2, cy: ay + h / 2, w, h, ax, ay };
+    }
+    const size = Number(/(\d+)$/.exec(el.font || "")?.[1] || 32);
+    const w = Math.max(24, txt.length * size * 0.6), h = size * 1.2;
+    return { cx, cy, w, h, ax: cx - w / 2, ay: cy - h / 2 };
+  }
+  if (el.type === "shape") {
+    const w = Number(el.w) || 20, h = Number(el.h) || 20;
+    return { cx, cy, w, h, ax: cx - w / 2, ay: cy - h / 2 };
+  }
+  if (el.type === "bar") {
+    const w = Number(el.w) || 180, h = Number(el.h) || 24;
+    return { cx, cy, w, h, ax: cx - w / 2, ay: cy - h / 2 };
+  }
+  return null;
+}
+
+/* Paint order matches the firmware: a stable sort on the optional "z"
+ * (default 0), original array order breaking ties. Draw walks it forwards,
+ * hit-testing walks it backwards, so what looks on top selects on top. */
+function paintOrder() {
+  const els = state.doc?.elements;
+  if (!Array.isArray(els)) return [];
+  return els.map((el, i) => ({ el, i, z: Number(el.z) || 0 }))
+            .sort((a, b) => (a.z - b.z) || (a.i - b.i));
+}
+
+/* Topmost element whose bounds contain (px,py) in screen space. Reverse
+ * order so the last-drawn (visually on top) wins. */
+function elementAt(px, py) {
+  const order = paintOrder();
+  for (let k = order.length - 1; k >= 0; k--) {
+    const b = elementBounds(order[k].el);
+    if (!b) continue;
+    if (px >= b.ax && px <= b.ax + b.w && py >= b.ay && py <= b.ay + b.h)
+      return order[k].i;
+  }
+  return -1;
+}
+
+/*
+ * Draw the layout on top of the background. Positions are offsets from the
+ * centre of the screen, matching how the firmware places elements.
+ */
+function drawElements() {
+  const order = paintOrder();
+  if (!order.length) return;
+
+  const cx = DISPLAY_PX / 2, cy = DISPLAY_PX / 2;
+
+  for (const { el } of order) {
+    const x = Number(el.x) || 0, y = Number(el.y) || 0;
+    // Lamps and other conditional elements only appear when their channel
+    // fires; show them faintly so their placement is still visible. In the
+    // simulator they follow their channel exactly, like the dash.
+    const conditional = el.bind && el.bind.kind === "visible";
+    if (sim.on && conditional && !simVisible(el)) continue;
+    ctx.save();
+    ctx.globalAlpha = (conditional && !sim.on) ? 0.45 : 1;
+
+    if (el.type === "image" || el.type === "needle") {
+      const art = el.src ? assetCanvas(assetPathFor(el.src)) : null;
+
+      if (el.type === "needle") {
+        const pv = Array.isArray(el.pivot) ? el.pivot : [0, 0];
+        // Match the firmware exactly: lv_obj_align(CENTER, x, y) places the
+        // image's CENTRE at screen-centre + (x,y); lv_image_set_pivot then
+        // rotates about pixel (pv) within the image. So the rotation hub is
+        // the pivot's offset from the image centre, added to the anchor.
+        const isSel = (state.doc.elements[state.selected] === el);
+        const ang = sim.on ? simNeedleDeg(el)
+                  : (isSel && state.testAngle != null) ? state.testAngle : 0;
+        if (art) {
+          const acx = cx + x, acy = cy + y;          // image-centre anchor
+          const hubX = acx + (pv[0] - art.width / 2); // where the pivot lands
+          const hubY = acy + (pv[1] - art.height / 2);
+          ctx.save();
+          ctx.translate(hubX, hubY);
+          ctx.rotate(ang * Math.PI / 180);
+          // draw so pixel (pv) sits at the hub we just translated to
+          ctx.drawImage(art, -pv[0], -pv[1]);
+          ctx.restore();
+        } else {
+          ctx.strokeStyle = "#e2484d";
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + x, cy + y);
+          ctx.stroke();
+        }
+      } else if (art) {
+        ctx.drawImage(art, cx + x - art.width / 2, cy + y - art.height / 2);
+      } else {
+        placeholder(cx + x, cy + y, el.src || el.id);
+      }
+    } else if (el.type === "label") {
+      if (labelHiddenInPreview(el) && (sim.on || state.doc.elements[state.selected] !== el)) continue;
+      const bf = labelBinfont(el);
+      if (bf) {
+        // The font file itself, glyph for glyph, as the dash draws it.
+        const tc = binTextCanvas(bf, labelPreviewText(el), el.color || "#f0f0f0");
+        ctx.drawImage(tc, (DISPLAY_PX >> 1) - (tc.width >> 1) + x,
+                          (DISPLAY_PX >> 1) - (tc.height >> 1) + y);
+      } else {
+        const size = /(\d+)$/.exec(el.font || "")?.[1] || 32;
+        ctx.fillStyle = el.color || "#f0f0f0";
+        ctx.font = `600 ${size}px "Bahnschrift", "DIN Alternate", sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(labelPreviewText(el), cx + x, cy + y);
+      }
+    } else if (el.type === "shape") {
+      const w = Number(el.w) || 20, h = Number(el.h) || 20;
+      ctx.fillStyle = el.bg || "#303030";
+      ctx.beginPath();
+      if (el.round) ctx.arc(cx + x, cy + y, Math.min(w, h) / 2, 0, Math.PI * 2);
+      else ctx.rect(cx + x - w / 2, cy + y - h / 2, w, h);
+      ctx.fill();
+      if (el.border) {
+        ctx.strokeStyle = el.border;
+        ctx.lineWidth = Number(el.border_w) || 1;
+        ctx.stroke();
+      }
+    } else if (el.type === "bar") {
+      drawBar(el, cx + x, cy + y);
+    }
+    ctx.restore();
+  }
+}
+
+/* A bar at its sample value, mirroring lv_bar: the track fills from the
+ * left (or bottom when taller than wide); "reverse" flips it; "pad" insets
+ * the fill inside the track. */
+function drawBar(el, bx, by) {
+  const w = Number(el.w) || 180, h = Number(el.h) || 24;
+  const r = Number(el.radius) || 0;
+  const pad = Number(el.pad) || 0;
+  const b = el.bind || {};
+
+  let frac = 0.6;
+  if (b.kind !== "visible") {
+    const lo = Number(b.in_min) || 0;
+    const hi = Number.isFinite(Number(b.in_max)) ? Number(b.in_max) : 100;
+    const v = sim.on ? simBarValue(el) : (SAMPLE[b.channel] ?? lo);
+    if (hi > lo) frac = Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+  }
+
+  const x0 = bx - w / 2, y0 = by - h / 2;
+  ctx.beginPath();
+  ctx.roundRect(x0, y0, w, h, r);
+  ctx.fillStyle = el.bg || "#202020";
+  ctx.fill();
+  if (el.border) {
+    ctx.strokeStyle = el.border;
+    ctx.lineWidth = Number(el.border_w) || 1;
+    ctx.stroke();
+  }
+
+  const iw = w - 2 * pad, ih = h - 2 * pad;
+  if (iw <= 0 || ih <= 0) return;
+  ctx.beginPath();
+  if (ih > iw) {   // vertical: fill from the bottom, reverse = from the top
+    const fh = ih * frac;
+    const fy = el.reverse ? y0 + pad : y0 + pad + (ih - fh);
+    ctx.roundRect(x0 + pad, fy, iw, fh, Math.max(0, r - pad));
+  } else {          // horizontal: fill from the left, reverse = from the right
+    const fw = iw * frac;
+    const fx = el.reverse ? x0 + pad + (iw - fw) : x0 + pad;
+    ctx.roundRect(fx, y0 + pad, fw, ih, Math.max(0, r - pad));
+  }
+  ctx.fillStyle = el.fill || "#f2a93b";
+  ctx.fill();
+}
+
+/* Outline the selected element, and for a needle show its pivot point so
+ * you can see exactly what is being placed at the dial centre. */
+function drawSelection() {
+  if (state.selected == null) return;
+  const els = state.doc?.elements;
+  if (!Array.isArray(els) || !els[state.selected]) return;
+  const el = els[state.selected];
+  const bnd = elementBounds(el);
+  if (!bnd) return;
+
+  ctx.save();
+  ctx.strokeStyle = "#4fd1ff";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([7, 4]);
+  ctx.strokeRect(bnd.ax, bnd.ay, bnd.w, bnd.h);
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#4fd1ff";
+  ctx.beginPath();
+  ctx.arc(bnd.cx, bnd.cy, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (el.type === "needle") {
+    ctx.strokeStyle = "#4fd1ff";
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(DISPLAY_PX / 2 - 16, DISPLAY_PX / 2);
+    ctx.lineTo(DISPLAY_PX / 2 + 16, DISPLAY_PX / 2);
+    ctx.moveTo(DISPLAY_PX / 2, DISPLAY_PX / 2 - 16);
+    ctx.lineTo(DISPLAY_PX / 2, DISPLAY_PX / 2 + 16);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/*
+ * Stand-in for artwork that hasn't been added yet. Preview only -- it is
+ * never part of an exported file, since the background is rendered on its
+ * own canvas (see backgroundImageData).
+ */
+function placeholder(x, y, name) {
+  ctx.strokeStyle = "#f2a93b";
+  ctx.setLineDash([6, 5]);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - 40, y - 40, 80, 80);
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#f2a93b";
+  ctx.font = '500 15px "Bahnschrift", sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(name.slice(0, 12), x, y + 56);
+}
+
+/* What a label would show on the dash, using the sample channel values. */
+function fmtSample(fmt, val) {
+  const s = String(val);
+  return /%0?\d*d/.test(fmt) ? fmt.replace(/%0?\d*d/, s) : fmt || s;
+}
+
+/* hide_when: hidden while the flag's sample is 0. The selected element is
+ * still drawn so it can be placed. */
+function labelHiddenInPreview(el) {
+  const hw = el.bind && el.bind.hide_when;
+  return !!hw && chanValue(hw, 1) === 0;
+}
+
+/* Channel value for the preview: the simulator's when it's running, the
+ * fixed sample otherwise. */
+function chanValue(key, fallback) {
+  if (sim.on) return sim.ch[key] ?? fallback ?? 0;
+  return SAMPLE[key] ?? fallback;
+}
+
+function labelPreviewText(el) {
+  const b = el.bind;
+  if (b && b.kind !== "visible") {
+    const v = chanValue(b.channel, 88);
+    if (Array.isArray(b.map)) {
+      const hit = b.map.find(m => m.value === v);
+      return hit ? hit.text : (b.default ?? "-");
+    }
+    return renderFmtText(b, v);
+  }
+  return el.text || el.id || "";
+}
+
+/* Mirrors text_render() in flashgauge_layout.c. */
+function renderFmtText(b, v) {
+  const sfx = b.suffix === "auto" ? unitLabel(b.channel) : (b.suffix || "");
+  if (b.style === "time") {
+    if (v < 0) return "--:--" + sfx;
+    let h = Math.floor(v / 60), m = v % 60, ampm = "";
+    if (docUnits().clock === "12h") { ampm = h >= 12 ? " PM" : " AM"; h %= 12; if (h === 0) h = 12; }
+    const hh = b.pad_hours ? String(h).padStart(2, "0") : String(h);
+    return `${hh}:${String(m).padStart(2, "0")}${ampm}${sfx}`;
+  }
+  const dec = Math.min(3, Math.max(0, Number(b.decimals) || 0));
+  if (dec > 0) {
+    const p = 10 ** dec, a = Math.abs(v);
+    return `${v < 0 ? "-" : ""}${Math.floor(a / p)}.${String(a % p).padStart(dec, "0")}${sfx}`;
+  }
+  const div = Number(b.divisor) > 0 ? Number(b.divisor) : 1;
+  return fmtSample(b.format || "%d", Math.floor(v / div)) + sfx;
+}
+
+/*
+ * Pointer handling has two modes on the same canvas:
+ *   - press on an element  -> select it and drag it (edits doc.elements)
+ *   - press on empty space -> pan the background crop (edits the offset)
+ * Selection is the single source of truth; the property panel and the
+ * preview both read and write doc.elements, so adding element creation
+ * later is just growing the panel, not reworking this.
+ */
+let panning = false, movingEl = false, lastX = 0, lastY = 0;
+const wrap = $("dialWrap");
+
+// Client coords -> the 720-space the layout uses.
+function toDialSpace(e) {
+  const r = wrap.getBoundingClientRect();
+  const s = DISPLAY_PX / r.width;
+  return { x: (e.clientX - r.left) * s, y: (e.clientY - r.top) * s };
+}
+
+wrap.addEventListener("pointerdown", e => {
+  if (sim.on) return;                      // the simulator doesn't edit
+  const pt = toDialSpace(e);
+  const hit = elementAt(pt.x, pt.y);
+
+  if (hit >= 0) {
+    if (hit !== state.selected) state.testAngle = null;
+    state.selected = hit;
+    movingEl = true;
+    lastX = e.clientX; lastY = e.clientY;
+    wrap.setPointerCapture(e.pointerId);
+    renderElementPanel();
+    drawPreview();
+    return;
+  }
+
+  // empty space: deselect and pan the photo (only if there is one)
+  if (state.selected != null) { state.selected = null; state.testAngle = null; renderElementPanel(); drawPreview(); }
+  if (!state.img) return;
+  panning = true; lastX = e.clientX; lastY = e.clientY;
+  wrap.setPointerCapture(e.pointerId);
+});
+
+wrap.addEventListener("pointermove", e => {
+  const scale = DISPLAY_PX / wrap.clientWidth;
+
+  if (movingEl && state.selected != null) {
+    const el = state.doc.elements[state.selected];
+    el.x = Math.round((Number(el.x) || 0) + (e.clientX - lastX) * scale);
+    el.y = Math.round((Number(el.y) || 0) + (e.clientY - lastY) * scale);
+    lastX = e.clientX; lastY = e.clientY;
+    syncElementPanelFields();
+    drawPreview();
+    return;
+  }
+
+  if (panning) {
+    state.offX += (e.clientX - lastX) * scale;
+    state.offY += (e.clientY - lastY) * scale;
+    lastX = e.clientX; lastY = e.clientY;
+    drawPreview();
+  }
+});
+
+wrap.addEventListener("pointerup", e => {
+  panning = false; movingEl = false;
+  if (wrap.hasPointerCapture(e.pointerId)) wrap.releasePointerCapture(e.pointerId);
+});
+wrap.addEventListener("wheel", e => {
+  if (!state.img) return;
+  e.preventDefault();
+  const next = Math.min(4, Math.max(1, state.zoom * (e.deltaY < 0 ? 1.08 : 0.926)));
+  state.zoom = next;
+  $("zoom").value = Math.round(next * 100);
+  $("zoomOut").textContent = next.toFixed(2) + "×";
+  drawPreview();
+}, { passive: false });
+
+$("bgQuality").addEventListener("input", e => {
+  $("bgQualityOut").textContent = e.target.value;
+});
+
+$("zoom").addEventListener("input", e => {
+  state.zoom = e.target.value / 100;
+  $("zoomOut").textContent = state.zoom.toFixed(2) + "×";
+  drawPreview();
+});
+
+/* ---------------------------------------------------- asset table ---- */
+function fmtKB(bytes) {
+  return (bytes / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 }) + " KB";
+}
+
+function renderAssets() {
+  const tb = $("assetRows");
+  tb.innerHTML = "";
+
+  if (state.assets.size === 0) {
+    tb.innerHTML = '<tr><td colspan="3" class="empty-row">Nothing added yet.</td></tr>';
+  } else {
+    for (const [path, a] of state.assets) {
+      const tr = document.createElement("tr");
+      const td1 = document.createElement("td");
+      td1.className = "path";
+      td1.textContent = path;
+      if (a.source === "font") {
+        td1.title = "Built from a font in the Fonts section";
+      } else {
+      td1.contentEditable = "true";
+      td1.spellcheck = false;
+      td1.title = "Click to change where this file lands on the dash";
+      td1.onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); ev.target.blur(); } };
+      td1.onblur = ev => {
+        const next = ev.target.textContent.trim().replace(/^\/+/, "");
+        if (!next || next === path) { ev.target.textContent = path; return; }
+        // Rebuild in order so the table doesn't jump around.
+        const rebuilt = new Map();
+        for (const [k, v] of state.assets) rebuilt.set(k === path ? next : k, v);
+        state.assets = rebuilt;
+        renderAssets();
+      };
+      }
+      const td2 = document.createElement("td");
+      td2.className = "size"; td2.textContent = fmtKB(a.bytes.length);
+      const td3 = document.createElement("td");
+      td3.className = "act";
+      const rm = document.createElement("button");
+      rm.textContent = "Remove";
+      rm.onclick = () => {
+        if (a.source === "font") {
+          const src = fontSources().find(s => (s.sizes || []).some(
+            z => fontPathFor(fontName(s.base, z)) === path));
+          if (src) { removeFontSize(src, src.sizes.find(
+            z => fontPathFor(fontName(src.base, z)) === path)); return; }
+        }
+        state.assets.delete(path); renderAssets();
+      };
+      td3.appendChild(rm);
+      tr.append(td1, td2, td3);
+      tb.appendChild(tr);
+    }
+  }
+  decodeCache.clear();
+  refreshNameLists();
+  renderFonts();
+  renderNeeds();
+  renderBudget();
+  drawPreview();
+  const nothing = state.assets.size === 0 && !state.doc;
+  $("btnExport").disabled = nothing;
+  $("btnExportLoose").disabled = nothing;
+}
+
+/*
+ * Every image and needle element names its artwork, and labels can name a
+ * font; that set is exactly what has to be installed alongside dash.json.
+ * Compiled-in fonts are never listed (labels using them need no file);
+ * compiled-in artwork IS listed, shown as covered, because a file on the
+ * same path deliberately overrides it (resolve_image is filesystem-first).
+ */
+function requiredAssets() {
+  const els = state.doc && Array.isArray(state.doc.elements) ? state.doc.elements : [];
+  const out = new Map();   // path -> { users: [ids], kind: "img"|"font", name }
+  const add = (path, kind, name, user) => {
+    if (!out.has(path)) out.set(path, { users: [], kind, name });
+    out.get(path).users.push(user);
+  };
+  for (const el of els) {
+    const user = el.id || el.type;
+    if ((el.type === "image" || el.type === "needle") && el.src)
+      add(assetPathFor(el.src), "img", el.src, user);
+    if (el.type === "label" && el.font && !COMPILED_FONTS.includes(el.font))
+      add(fontPathFor(el.font), "font", el.font, user);
+  }
+  return out;
+}
+
+/* Is this requirement satisfied without installing a file? User overrides
+ * win in both directions over what the compiled-in tables say. */
+function coveredByFirmware(path, name, kind) {
+  if (state.userNeeds.has(path)) return false;
+  if (state.inFirmware.has(path)) return true;
+  return kind === "img" ? COMPILED_IMAGES.includes(name)
+                        : COMPILED_FONTS.includes(name);
+}
+
+function renderNeeds() {
+  const need = requiredAssets();
+  const block = $("needsBlock");
+  const tb = $("needRows");
+
+  if (need.size === 0) { block.style.display = "none"; return; }
+  block.style.display = "";
+  tb.innerHTML = "";
+
+  for (const [path, info] of need) {
+    const have = state.assets.has(path);
+    const inFw = !have && coveredByFirmware(path, info.name, info.kind);
+
+    const tr = document.createElement("tr");
+    if (!have && !inFw) tr.className = "missing";
+
+    const m = document.createElement("td");
+    if (have)       { m.className = "mark have"; m.textContent = "✓"; }
+    else if (inFw)  { m.className = "mark"; m.style.color = "var(--dim)"; m.textContent = "◦"; }
+    else            { m.className = "mark need"; m.textContent = "•"; }
+
+    const p = document.createElement("td");
+    p.className = "path";
+    p.textContent = path;
+
+    const u = document.createElement("td");
+    u.style.color = "var(--dim)";
+    u.style.fontSize = "12px";
+    u.textContent = info.users.join(", ");
+
+    const s = document.createElement("td");
+    s.className = "size";
+    if (have) {
+      s.textContent = fmtKB(state.assets.get(path).bytes.length);
+    } else if (inFw) {
+      s.textContent = "in firmware";
+      s.style.color = "var(--dim)";
+    } else {
+      s.textContent = "missing";
+      s.style.color = "var(--redline)";
+    }
+
+    const t = document.createElement("td");
+    t.className = "act";
+    if (!have) {
+      const b = document.createElement("button");
+      b.textContent = inFw ? "Needs a file" : "In firmware";
+      b.title = inFw
+        ? "Treat this as one that has to be installed"
+        : "This one is compiled into the firmware, so no file is needed";
+      b.onclick = () => {
+        if (inFw) { state.userNeeds.add(path); state.inFirmware.delete(path); }
+        else      { state.userNeeds.delete(path); state.inFirmware.add(path); }
+        renderNeeds();
+      };
+      t.appendChild(b);
+    }
+
+    tr.append(m, p, u, s, t);
+    tb.appendChild(tr);
+  }
+}
+
+function renderBudget() {
+  let total = 0;
+  for (const a of state.assets.values()) total += a.bytes.length;
+  const kb = total / 1024;
+  const frac = Math.min(1, kb / PARTITION_KB);
+
+  const ARC = 157;
+  $("budgetArc").setAttribute("stroke-dashoffset", String(ARC * (1 - frac)));
+  $("budgetArc").setAttribute("stroke",
+    frac > 0.8 ? "var(--redline)" : "var(--amber)");
+
+  const a0 = Math.PI, a1 = Math.PI * 2;
+  const ang = a0 + (a1 - a0) * frac;
+  $("budgetNeedle").setAttribute("x2", (66 + 50 * Math.cos(ang)).toFixed(1));
+  $("budgetNeedle").setAttribute("y2", (70 + 50 * Math.sin(ang)).toFixed(1));
+
+  const num = $("budgetNum");
+  num.textContent = fmtKB(total);
+  num.classList.toggle("over", frac > 0.8);
+
+  $("budgetSub").textContent = total === 0
+    ? `of ${PARTITION_KB.toLocaleString()} KB flash · nothing to install yet`
+    : `of ${PARTITION_KB.toLocaleString()} KB flash · about ${Math.max(1, Math.round(kb / XFER_KBPS))} s to install`;
+}
+
+/* ------------------------------------------------------ identity ---- */
+function renderIdentity() {
+  $("identName").textContent = state.name;
+  $("identRev").textContent = state.revision || "—";
+  $("identId").textContent = state.id || "—";
+  renderUnits();
+}
+
+function renderUnits() {
+  const u = docUnits();
+  $("unitSpeed").value = u.speed;
+  $("unitTemp").value  = u.temp;
+  $("unitClock").value = u.clock;
+}
+function bindUnitSelect(id, key) {
+  $(id).addEventListener("change", () => {
+    if (!state.doc) return;
+    state.doc.units = Object.assign({}, docUnits(), { [key]: $(id).value });
+    renderElementPanel();   /* picker labels and "auto" notes follow the unit */
+    drawPreview();
+  });
+}
+bindUnitSelect("unitSpeed", "speed");
+bindUnitSelect("unitTemp",  "temp");
+bindUnitSelect("unitClock", "clock");
+
+function say(el, msg, bad) {
+  const n = $(el);
+  n.textContent = msg;
+  n.classList.remove("hidden");
+  n.classList.toggle("bad", !!bad);
+}
+
+/* ------------------------------------------- element property panel ---- */
+/*
+ * Renders editable fields for the selected element. Fields are declared per
+ * type in FIELD_SETS; every element gets x/y, and types add their own. This
+ * is the growth point for the full editor -- new field kinds (dropdowns for
+ * bindings, colour pickers) slot into renderField without touching the
+ * drag/selection machinery.
+ */
+const FIELD_SETS = {
+  common: [
+    { key: "x", label: "X (from centre)", kind: "num" },
+    { key: "y", label: "Y (from centre)", kind: "num" },
+    { key: "z", label: "Z (paint order)", kind: "num", prune: 0 },
+  ],
+  image: [
+    { key: "src", label: "Artwork", kind: "src" },
+  ],
+  needle: [
+    { key: "src", label: "Artwork", kind: "src" },
+    { key: "pivot", label: "Pivot in image", kind: "xy" },
+  ],
+  label: [
+    { key: "text", label: "Text", kind: "text" },
+    { key: "font", label: "Font", kind: "font",
+      hint: "montserrat_42 / montserrat_48 are built in; sizes added under Fonts are listed too" },
+    { key: "color", label: "Colour", kind: "color" },
+  ],
+  shape: [
+    { key: "w", label: "Width", kind: "num" },
+    { key: "h", label: "Height", kind: "num" },
+    { key: "bg", label: "Fill", kind: "color" },
+    { key: "round", label: "Circle", kind: "check" },
+    { key: "radius", label: "Corner radius", kind: "num", prune: 0 },
+    { key: "border", label: "Border", kind: "colorOpt" },
+    { key: "border_w", label: "Border width", kind: "num", prune: 0 },
+  ],
+  bar: [
+    { key: "w", label: "Width", kind: "num" },
+    { key: "h", label: "Height", kind: "num" },
+    { key: "bg", label: "Track colour", kind: "color" },
+    { key: "fill", label: "Fill colour", kind: "color" },
+    { key: "radius", label: "Corner radius", kind: "num", prune: 0 },
+    { key: "pad", label: "Inner padding", kind: "num", prune: 0 },
+    { key: "border", label: "Border", kind: "colorOpt" },
+    { key: "border_w", label: "Border width", kind: "num", prune: 0 },
+    { key: "reverse", label: "Reverse fill", kind: "check" },
+  ],
+};
+
+/* Fields each bind mode exposes; rendered onto el.bind with renderField. */
+const BIND_FIELD_SETS = {
+  rotation: [
+    { key: "in_min", label: "Value at start", kind: "num" },
+    { key: "in_max", label: "Value at end", kind: "num" },
+    { key: "angle_start", label: "Start angle ×10", kind: "num" },
+    { key: "angle_sweep", label: "Sweep ×10", kind: "num" },
+    { key: "deadband", label: "Deadband ×10", kind: "num" },
+    { key: "filter", label: "Filter (0–1)", kind: "float" },
+    { key: "sweep", label: "Startup sweep", kind: "check" },
+    { key: "sweep_ms", label: "Sweep ms", kind: "num" },
+  ],
+  value: [
+    { key: "in_min", label: "Value empty", kind: "num" },
+    { key: "in_max", label: "Value full", kind: "num" },
+    { key: "deadband", label: "Deadband", kind: "num" },
+    { key: "filter", label: "Filter (0–1)", kind: "float" },
+    { key: "sweep", label: "Startup sweep", kind: "check" },
+    { key: "sweep_ms", label: "Sweep ms", kind: "num" },
+  ],
+  fmt: [],   /* see fmtFields(): depends on the channel */
+  fmt_time: [
+    { key: "pad_hours", label: "Pad hours (08:05)", kind: "check" },
+  ],
+  fmt_value: [
+    { key: "decimals", label: "Decimals", kind: "num", prune: 0,
+      hint: "1 shows a tenths value as 123.4; 0 uses Format" },
+    { key: "suffix", label: "Suffix", kind: "text",
+      hint: '"auto" = unit from the layout, or literal text' },
+    { key: "format", label: "Format", kind: "text",
+      hint: "printf on the value when Decimals is 0, e.g. %d" },
+    { key: "divisor", label: "Divide by", kind: "num", prune: 1,
+      hint: "legacy: 10 turns tenths into whole; prefer Decimals" },
+    { key: "hide_when", label: "Hide when off", kind: "flagchan",
+      hint: "hide this label while the chosen flag reads 0" },
+  ],
+  map: [
+    { key: "map", label: "Value → text", kind: "maptext" },
+    { key: "default", label: "Otherwise", kind: "text" },
+  ],
+  visible: [
+    { key: "invert", label: "Show when zero", kind: "check" },
+  ],
+};
+
+function currentElement() {
+  const els = state.doc?.elements;
+  if (!Array.isArray(els) || state.selected == null) return null;
+  return els[state.selected] || null;
+}
+
+function renderElementPanel() {
+  const block = $("elementBlock");
+  const host = $("elementFields");
+  const el = currentElement();
+
+  renderElementList();
+  refreshNameLists();
+
+  if (!el) { block.style.display = "none"; host.innerHTML = ""; return; }
+  block.style.display = "";
+  host.innerHTML = "";
+
+  const head = document.createElement("div");
+  head.className = "elhead";
+  const tag = document.createElement("span");
+  tag.className = "tag"; tag.textContent = el.type;
+  const idInp = document.createElement("input");
+  idInp.type = "text";
+  idInp.value = el.id || "";
+  idInp.spellcheck = false;
+  idInp.style.cssText = "flex:1;font-family:var(--mono);font-size:13px;" +
+    "background:transparent;border:none;border-bottom:1px dashed var(--hairline);" +
+    "border-radius:0;color:var(--lit);padding:2px 4px";
+  idInp.title = "The element's id — shown in firmware error messages";
+  idInp.addEventListener("input", () => { el.id = idInp.value; renderElementList(); });
+  head.append(tag, idInp);
+  host.appendChild(head);
+
+  if (FIELD_SETS[el.type]) {
+    const fields = [...FIELD_SETS.common, ...FIELD_SETS[el.type]];
+    for (const f of fields) renderField(host, el, f);
+    renderBindSection(host, el);
+  } else {
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.style.marginTop = "12px";
+    note.textContent = `This tool doesn't know the "${el.type}" type, so only its ` +
+      `position is editable. Everything else it carries is kept as-is.`;
+    host.appendChild(note);
+    for (const f of FIELD_SETS.common) renderField(host, el, f);
+  }
+
+  if (el.type === "needle") renderSweepControl(host, el);
+
+  const act = document.createElement("div");
+  act.className = "elact";
+  const dup = document.createElement("button");
+  dup.textContent = "Duplicate";
+  dup.onclick = () => {
+    const copy = JSON.parse(JSON.stringify(el));
+    const ids = new Set(state.doc.elements.map(e => e.id));
+    let base = (copy.id || copy.type).replace(/\d+$/, "") || copy.type, n = 2;
+    while (ids.has(`${base}${n}`)) n++;
+    copy.id = `${base}${n}`;
+    copy.x = (Number(copy.x) || 0) + 20;
+    copy.y = (Number(copy.y) || 0) + 20;
+    state.doc.elements.splice(state.selected + 1, 0, copy);
+    state.selected += 1;
+    state.testAngle = null;
+    renderElementPanel();
+    renderAssets();
+  };
+  const del = document.createElement("button");
+  del.className = "danger";
+  del.textContent = "Delete";
+  del.onclick = deleteSelected;
+  act.append(dup, del);
+  host.appendChild(act);
+}
+
+/* The binding block: what the element reacts to. Mode changes swap the
+ * bind object wholesale for that mode's defaults (keeping the channel),
+ * so the JSON always holds exactly one coherent shape. */
+function renderBindSection(host, el) {
+  const modes = BIND_MODES[el.type] || ["none"];
+  const mode = bindMode(el);
+
+  const head = document.createElement("div");
+  head.className = "subhead";
+  head.textContent = "Reacts to";
+  host.appendChild(head);
+
+  if (modes.length > 1) {
+    const row = document.createElement("div");
+    row.className = "field";
+    const lab = document.createElement("label");
+    lab.textContent = "Behaviour";
+    const sel = document.createElement("select");
+    for (const m of modes) {
+      const o = document.createElement("option");
+      o.value = m; o.textContent = MODE_NAMES[m] || m;
+      if (m === mode) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.addEventListener("change", () => {
+      const keep = el.bind?.channel;
+      if (sel.value === "none") delete el.bind;
+      else el.bind = bindDefaults(sel.value, keep);
+      state.testAngle = null;
+      renderElementPanel();
+      drawPreview();
+    });
+    row.append(lab, sel);
+    host.appendChild(row);
+  }
+
+  if (mode === "none" || !el.bind) return;
+
+  const chRow = document.createElement("div");
+  chRow.className = "field";
+  const chLab = document.createElement("label");
+  chLab.textContent = "Signal";
+  const chSel = document.createElement("select");
+  for (const c of CHANNELS) {
+    const o = document.createElement("option");
+    o.value = c.key; o.textContent = chanLabel(c);
+    if (c.key === el.bind.channel) o.selected = true;
+    chSel.appendChild(o);
+  }
+  if (el.bind.channel && !CHANNELS.some(c => c.key === el.bind.channel)) {
+    const o = document.createElement("option");
+    o.value = el.bind.channel; o.textContent = el.bind.channel + " (unknown)";
+    o.selected = true;
+    chSel.appendChild(o);
+  }
+  chSel.addEventListener("change", () => {
+    el.bind.channel = chSel.value;
+    if (mode === "fmt") {
+      /* A clock needs the time style and nothing else; anything else
+       * must not carry it. Rebuild the panel so the fields follow. */
+      const c = chanInfo(el.bind.channel);
+      if (c && c.kind === "time") {
+        for (const k of ["decimals", "suffix", "format", "divisor"]) delete el.bind[k];
+        el.bind.style = "time";
+      } else if (el.bind.style === "time") {
+        delete el.bind.style; delete el.bind.pad_hours;
+        el.bind.format = "%d";
+      }
+      renderElementPanel();
+    }
+    drawPreview();
+  });
+  chRow.append(chLab, chSel);
+  host.appendChild(chRow);
+
+  const fields = mode === "fmt" ? fmtFields(el.bind) : (BIND_FIELD_SETS[mode] || []);
+  for (const f of fields)
+    renderField(host, el.bind, f, () => { renderSweepRefresh(el); drawPreview(); });
+  if (mode === "fmt" && el.bind.suffix === "auto") {
+    const note = document.createElement("p");
+    note.className = "hint";
+    const u = unitLabel(el.bind.channel);
+    note.textContent = u ? `"auto" is "${u.trim()}" under this layout's units.`
+                         : `"auto" is empty for this signal — it has no unit.`;
+    host.appendChild(note);
+  }
+}
+
+function fmtFields(b) {
+  const c = chanInfo(b.channel);
+  return (b.style === "time" || (c && c.kind === "time"))
+    ? BIND_FIELD_SETS.fmt_time : BIND_FIELD_SETS.fmt_value;
+}
+
+/* Angle edits should move the test-sweep slider's range live; cheapest is
+ * a full panel rebuild, but that steals focus mid-typing, so only refresh
+ * when the slider exists and the needle is at rest. */
+function renderSweepRefresh(el) {
+  if (el.type === "needle" && state.testAngle == null) renderElementPanel();
+}
+
+function deleteSelected() {
+  const el = currentElement();
+  if (!el) return;
+  state.doc.elements.splice(state.selected, 1);
+  state.selected = null;
+  state.testAngle = null;
+  renderElementPanel();
+  renderAssets();
+}
+
+/* ------------------------------------------------------ element list ---- */
+function renderElementList() {
+  const tb = $("elementRows");
+  if (!tb) return;
+  tb.innerHTML = "";
+  const els = state.doc?.elements;
+  if (!Array.isArray(els) || !els.length) {
+    tb.innerHTML = '<tr><td class="empty-row">No elements yet — add one above, or load a dash.json.</td></tr>';
+    return;
+  }
+  els.forEach((el, i) => {
+    const tr = document.createElement("tr");
+    if (i === state.selected) tr.className = "selrow";
+    const t = document.createElement("td");
+    t.className = "etype"; t.textContent = el.type;
+    const n = document.createElement("td");
+    n.className = "path"; n.textContent = el.id || "(no id)";
+    const c = document.createElement("td");
+    c.className = "ech";
+    c.textContent = el.bind?.channel ? "← " + el.bind.channel : "";
+    tr.append(t, n, c);
+    tr.onclick = () => {
+      if (state.selected !== i) state.testAngle = null;
+      state.selected = i;
+      renderElementPanel();
+      drawPreview();
+    };
+    tb.appendChild(tr);
+  });
+}
+
+/* Datalists offering every artwork/font name that would resolve: the
+ * compiled-in tables plus whatever files have been added. */
+function refreshNameLists() {
+  const fill = (id, names) => {
+    const dl = $(id);
+    if (!dl) return;
+    dl.innerHTML = "";
+    for (const n of [...new Set(names)].sort()) {
+      const o = document.createElement("option");
+      o.value = n;
+      dl.appendChild(o);
+    }
+  };
+  const srcs = [...COMPILED_IMAGES];
+  const fonts = [...COMPILED_FONTS];
+  for (const path of state.assets.keys()) {
+    if (path.startsWith(naming.dir) && path.endsWith(naming.ext))
+      srcs.push(path.slice(naming.dir.length, path.length - naming.ext.length));
+    if (path.startsWith("font/") && path.endsWith(".bin"))
+      fonts.push(path.slice(5, -4));
+  }
+  fill("srcList", srcs);
+  fill("fontList", fonts);
+}
+
+function addElement(type) {
+  if (!state.doc) {
+    state.doc = { version: 1, screen: { w: DISPLAY_PX, h: DISPLAY_PX }, elements: [] };
+    state.id = uuid4();
+    state.revision = 0;
+    state.name = "Untitled layout";
+    renderIdentity();
+    say("layoutStatus", "Started a blank layout for you.");
+  }
+  if (!Array.isArray(state.doc.elements)) state.doc.elements = [];
+  if (state.doc.elements.length >= MAX_ELEMENTS) {
+    say("elementStatus", `The engine caps a layout at ${MAX_ELEMENTS} elements.`, true);
+    return;
+  }
+  $("elementStatus").classList.add("hidden");
+  state.doc.elements.push(makeElement(type));
+  state.selected = state.doc.elements.length - 1;
+  state.testAngle = null;
+  renderElementPanel();
+  renderAssets();
+}
+
+for (const b of document.querySelectorAll("[data-add]"))
+  b.onclick = () => addElement(b.dataset.add);
+
+/* Arrow keys nudge the selected element; Delete removes it. Never while
+ * typing in a field. */
+document.addEventListener("keydown", e => {
+  if (sim.on) return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" ||
+            t.tagName === "SELECT" || t.isContentEditable)) return;
+  const el = currentElement();
+  if (!el) return;
+  const step = e.shiftKey ? 10 : 1;
+  if      (e.key === "ArrowLeft")  el.x = (Number(el.x) || 0) - step;
+  else if (e.key === "ArrowRight") el.x = (Number(el.x) || 0) + step;
+  else if (e.key === "ArrowUp")    el.y = (Number(el.y) || 0) - step;
+  else if (e.key === "ArrowDown")  el.y = (Number(el.y) || 0) + step;
+  else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSelected(); return; }
+  else return;
+  e.preventDefault();
+  syncElementPanelFields();
+  drawPreview();
+});
+
+/*
+ * A test-sweep slider for needles. The dash rotates the needle between
+ * bind.angle_start and (angle_start + angle_sweep), in tenths of a degree
+ * (that is how the layout encodes them: 2300 = 230.0 deg). The slider walks
+ * that same range so the pivot can be checked across the whole travel, then
+ * "Rest" clears it so the preview shows the needle upright again.
+ */
+function renderSweepControl(host, el) {
+  const bind = el.bind || {};
+  const start10 = Number(bind.angle_start) || 0;
+  const sweep10 = Number(bind.angle_sweep) || 0;
+  const a0 = start10 / 10, a1 = (start10 + sweep10) / 10;
+
+  const wrapRow = document.createElement("div");
+  wrapRow.style.marginTop = "14px";
+  wrapRow.style.paddingTop = "14px";
+  wrapRow.style.borderTop = "1px solid var(--hairline)";
+
+  const lab = document.createElement("label");
+  lab.className = "slider";
+  lab.style.marginTop = "0";
+  lab.innerHTML = "Test sweep";
+
+  const slider = document.createElement("input");
+  slider.type = "range";
+  slider.min = String(Math.min(a0, a1));
+  slider.max = String(Math.max(a0, a1));
+  slider.step = "1";
+  slider.value = String(state.testAngle ?? a0);
+
+  const out = document.createElement("output");
+  out.style.fontFamily = "var(--mono)";
+  const setOut = v => { out.textContent = `${Math.round(v)}°`; };
+  setOut(state.testAngle ?? a0);
+
+  slider.addEventListener("input", () => {
+    state.testAngle = Number(slider.value);
+    setOut(state.testAngle);
+    drawPreview();
+  });
+
+  lab.append(slider, out);
+  wrapRow.appendChild(lab);
+
+  const hint = document.createElement("div");
+  hint.style.fontSize = "12px";
+  hint.style.color = "var(--dim)";
+  hint.style.marginTop = "8px";
+  if (sweep10 === 0) {
+    hint.textContent = "No sweep range in this element's binding — showing raw angle.";
+    slider.min = "0"; slider.max = "360";
+  } else {
+    hint.textContent = `Sweeps ${a0.toFixed(0)}° to ${a1.toFixed(0)}°, matching the dash. ` +
+                       `Watch the tip trace the dial to check the pivot.`;
+  }
+  wrapRow.appendChild(hint);
+
+  const rest = document.createElement("button");
+  rest.textContent = "Rest needle";
+  rest.style.marginTop = "10px";
+  rest.style.fontSize = "12px";
+  rest.style.padding = "4px 10px";
+  rest.onclick = () => { state.testAngle = null; renderElementPanel(); drawPreview(); };
+  wrapRow.appendChild(rest);
+
+  host.appendChild(wrapRow);
+}
+
+function renderField(host, obj, f, after) {
+  const done = after || drawPreview;
+  const row = document.createElement("div");
+  row.className = "field";
+  const lab = document.createElement("label");
+  lab.textContent = f.label;
+  if (f.hint) lab.title = f.hint;
+  row.appendChild(lab);
+
+  const setPruned = (key, v, prune) => {
+    if (prune !== undefined && v === prune) delete obj[key]; else obj[key] = v;
+  };
+
+  if (f.kind === "num" || f.kind === "float") {
+    const inp = numInput(obj[f.key] ?? (f.prune ?? 0), v => { setPruned(f.key, v, f.prune); done(); });
+    if (f.kind === "float") inp.step = "any";
+    inp.dataset.field = f.key;
+    row.appendChild(inp);
+  } else if (f.kind === "xy") {
+    const pair = document.createElement("div");
+    pair.className = "pair";
+    const arr = Array.isArray(obj[f.key]) ? obj[f.key] : [0, 0];
+    const ix = numInput(arr[0], v => { ensureArr(obj, f.key)[0] = v; done(); });
+    const iy = numInput(arr[1], v => { ensureArr(obj, f.key)[1] = v; done(); });
+    ix.dataset.field = f.key + "0"; iy.dataset.field = f.key + "1";
+    pair.append(ix, iy);
+    row.appendChild(pair);
+  } else if (f.kind === "text") {
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.value = obj[f.key] ?? "";
+    if (f.hint) inp.placeholder = f.hint;
+    inp.addEventListener("input", () => { obj[f.key] = inp.value; done(); });
+    row.appendChild(inp);
+  } else if (f.kind === "check") {
+    const inp = document.createElement("input");
+    inp.type = "checkbox";
+    inp.checked = !!obj[f.key];
+    inp.style.accentColor = "var(--amber)";
+    inp.style.justifySelf = "start";
+    inp.addEventListener("change", () => {
+      if (inp.checked) obj[f.key] = true; else delete obj[f.key];
+      done();
+    });
+    row.appendChild(inp);
+  } else if (f.kind === "color") {
+    const inp = document.createElement("input");
+    inp.type = "color";
+    inp.value = /^#[0-9a-fA-F]{6}$/.test(obj[f.key] || "") ? obj[f.key] : "#f0f0f0";
+    inp.addEventListener("input", () => { obj[f.key] = inp.value; done(); });
+    row.appendChild(inp);
+  } else if (f.kind === "colorOpt") {
+    const pair = document.createElement("div");
+    pair.className = "pair tight";
+    const on = document.createElement("input");
+    on.type = "checkbox";
+    on.style.accentColor = "var(--amber)";
+    on.checked = !!obj[f.key];
+    const inp = document.createElement("input");
+    inp.type = "color";
+    inp.value = /^#[0-9a-fA-F]{6}$/.test(obj[f.key] || "") ? obj[f.key] : "#8b939e";
+    inp.disabled = !on.checked;
+    on.addEventListener("change", () => {
+      if (on.checked) { obj[f.key] = inp.value; inp.disabled = false; }
+      else { delete obj[f.key]; inp.disabled = true; }
+      done();
+    });
+    inp.addEventListener("input", () => { obj[f.key] = inp.value; done(); });
+    pair.append(on, inp);
+    row.appendChild(pair);
+  } else if (f.kind === "src" || f.kind === "font") {
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.value = obj[f.key] ?? "";
+    inp.setAttribute("list", f.kind === "src" ? "srcList" : "fontList");
+    inp.spellcheck = false;
+    inp.placeholder = f.kind === "src" ? "artwork name" : "font name";
+    inp.addEventListener("input", () => {
+      if (inp.value) obj[f.key] = inp.value; else delete obj[f.key];
+      renderAssets();   // requirements, budget and preview all move with it
+    });
+    row.appendChild(inp);
+  } else if (f.kind === "flagchan") {
+    const sel = document.createElement("select");
+    const none = document.createElement("option");
+    none.value = ""; none.textContent = "(never)";
+    sel.appendChild(none);
+    for (const c of CHANNELS.filter(c => c.kind === "flag")) {
+      const o = document.createElement("option");
+      o.value = c.key; o.textContent = c.label;
+      sel.appendChild(o);
+    }
+    if (obj[f.key] && !CHANNELS.some(c => c.key === obj[f.key] && c.kind === "flag")) {
+      const o = document.createElement("option");
+      o.value = obj[f.key]; o.textContent = obj[f.key] + " (unknown)";
+      sel.appendChild(o);
+    }
+    sel.value = obj[f.key] || "";
+    sel.addEventListener("change", () => {
+      if (sel.value) obj[f.key] = sel.value; else delete obj[f.key];
+      done();
+    });
+    row.appendChild(sel);
+  } else if (f.kind === "maptext") {
+    const ta = document.createElement("textarea");
+    ta.spellcheck = false;
+    ta.value = (Array.isArray(obj[f.key]) ? obj[f.key] : [])
+      .map(m => `${m.value}=${m.text}`).join("\n");
+    ta.placeholder = "one per line, e.g.\n0=N\n1=1";
+    ta.addEventListener("input", () => {
+      const out = [];
+      for (const line of ta.value.split(/\n/)) {
+        const i = line.indexOf("=");
+        if (i > 0) out.push({ value: parseInt(line.slice(0, i).trim(), 10) || 0,
+                              text: line.slice(i + 1).slice(0, MAX_MAP_TEXT) });
+      }
+      obj[f.key] = out.slice(0, MAX_MAP_ENTRIES);
+      done();
+    });
+    row.appendChild(ta);
+  }
+  host.appendChild(row);
+}
+
+function ensureArr(el, key) {
+  if (!Array.isArray(el[key])) el[key] = [0, 0];
+  return el[key];
+}
+
+function numInput(value, onChange) {
+  const inp = document.createElement("input");
+  inp.type = "number";
+  inp.value = String(value);
+  inp.addEventListener("input", () => {
+    const v = inp.value === "" || inp.value === "-" ? 0 : Number(inp.value);
+    if (!Number.isNaN(v)) onChange(v);
+  });
+  return inp;
+}
+
+/* Update the number fields in place while dragging, without rebuilding the
+ * panel (which would steal focus). */
+function syncElementPanelFields() {
+  const el = currentElement();
+  if (!el) return;
+  const host = $("elementFields");
+  const setX = host.querySelector('[data-field="x"]');
+  const setY = host.querySelector('[data-field="y"]');
+  if (setX) setX.value = String(Number(el.x) || 0);
+  if (setY) setY.value = String(Number(el.y) || 0);
+}
+
+/* ------------------------------------------------- naming controls ---- */
+function applyNaming() {
+  naming.dir = $("namingDir").value.trim();
+  if (naming.dir && !naming.dir.endsWith("/")) naming.dir += "/";
+  naming.ext = $("namingExt").value.trim();
+  renderAssets();
+}
+$("namingDir").addEventListener("change", applyNaming);
+$("namingExt").addEventListener("change", applyNaming);
+
+/* Re-key already-added files onto the paths the layout expects. */
+$("btnRepath").onclick = () => {
+  const next = new Map();
+  let moved = 0;
+  for (const [path, a] of state.assets) {
+    const want = pathForAddedFile(path.split("/").pop());
+    if (want !== path) moved++;
+    next.set(want, a);
+  }
+  state.assets = next;
+  renderAssets();
+  say("exportStatus", moved
+    ? `Moved ${moved} file${moved === 1 ? "" : "s"} onto the paths this layout expects.`
+    : "Every file is already on the path this layout expects.");
+};
+
+/* --------------------------------------------------- file loading ---- */
+const readBytes = f => f.arrayBuffer().then(b => new Uint8Array(b));
+
+$("btnLoadJson").onclick = () => $("fileJson").click();
+$("fileJson").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const doc = JSON.parse(await f.text());
+    if (looksLikeVehicle(doc)) {             // wrong button, right file: route it
+      vehLoad(doc, f.name, `${f.name} is vehicle settings, so it opened here rather than as a layout.`);
+      $("vehicleBlock").scrollIntoView({ behavior: "smooth", block: "start" });
+      e.target.value = "";
+      return;
+    }
+    state.doc = doc;
+    const L = doc.layout || {};
+    state.id = L.id || uuid4();
+    state.revision = Number(L.revision) || 0;
+    state.name = L.name || f.name.replace(/\.json$/i, "");
+    renderIdentity();
+
+    state.selected = null;
+    state.testAngle = null;
+    renderElementPanel();
+    const els = Array.isArray(doc.elements) ? doc.elements.length : 0;
+    const need = requiredAssets().size;
+    say("layoutStatus",
+      `Loaded ${f.name}: ${els} element${els === 1 ? "" : "s"} kept exactly as they are.` +
+      (need ? `\nIt needs ${need} artwork file${need === 1 ? "" : "s"} — see the list below.` : ""));
+    renderAssets();
+  } catch (err) {
+    say("layoutStatus", `${f.name} isn't valid JSON, so nothing was loaded.`, true);
+  }
+  e.target.value = "";
+};
+
+$("btnNewJson").onclick = () => {
+  state.doc = { version: 1, screen: { w: DISPLAY_PX, h: DISPLAY_PX }, elements: [] };
+  state.id = uuid4();
+  state.revision = 0;
+  state.name = "Untitled layout";
+  renderIdentity();
+  say("layoutStatus",
+    "Started a blank layout. Add elements above — the background usually comes first.");
+  state.selected = null;
+  state.testAngle = null;
+  renderElementPanel();
+  renderAssets();
+};
+
+/* ---------------------------------------------------------- import ---- */
+/*
+ * Read an FGL1 bundle back apart -- the exact inverse of buildFgl(). This is
+ * what turns a published layout into a starting point rather than a dead end:
+ * download one, move a label, export it again.
+ *
+ * Entry bytes are kept exactly as they arrived. Nothing is re-encoded on the
+ * way in, so a layout imported and exported untouched ships the same artwork
+ * it came with, however many times it gets passed around.
+ */
+function parseFgl(bytes) {
+  if (bytes.length < 8) throw new Error("too short to be a layout bundle");
+  if (bytes[0] !== 0x46 || bytes[1] !== 0x47 || bytes[2] !== 0x4C || bytes[3] !== 0x31)
+    throw new Error("this isn't a .fglayout bundle");
+
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const count = dv.getUint16(4, true);
+  const dec = new TextDecoder();
+  const out = [];
+  let o = 8;
+
+  for (let i = 0; i < count; i++) {
+    const short = () => new Error(`the bundle ends part-way through entry ${i + 1} of ${count}`);
+    if (o + 2 > bytes.length) throw short();
+    const pathLen = dv.getUint16(o, true); o += 2;
+    if (o + pathLen + 12 > bytes.length) throw short();
+    const path = dec.decode(bytes.subarray(o, o + pathLen)); o += pathLen;
+    const size  = dv.getUint32(o, true); o += 4;
+    const crc   = dv.getUint32(o, true); o += 4;
+    const flags = dv.getUint32(o, true); o += 4;
+    if (o + size > bytes.length) throw new Error(`the bundle ends part-way through "${path}"`);
+    const data = bytes.slice(o, o + size); o += size;
+    const actual = crc32(data);
+    if (actual !== crc)
+      throw new Error(`"${path}" is damaged — the bundle records ${hex8(crc)}, the ` +
+                      `data checks out to ${hex8(actual)}`);
+    out.push({ path, bytes: data, flags, jpeg: !!(flags & FGL_ENTRY_JPEG) });
+  }
+  return out;
+}
+
+/*
+ * A JPEG entry is the transfer form, not the stored form: the dash decodes it
+ * to RGB565 on write and the manifest records the decoded size. Rebuild that
+ * decoded form here so the preview, the asset list and the size budget all
+ * agree with what actually ends up on the dash. No dithering -- TJpgDec on the
+ * dash doesn't dither either, so this matches what the panel shows.
+ */
+async function jpegToLvgl(jpegBytes) {
+  const blob = new Blob([jpegBytes], { type: "image/jpeg" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = () => rej(new Error("the JPEG background couldn't be decoded"));
+      i.src = url;
+    });
+    const c = document.createElement("canvas");
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    const id = g.getImageData(0, 0, img.width, img.height);
+    return {
+      bin: buildLvglImage(toRgb565(id, false), img.width, img.height, CF_RGB565),
+      img,
+    };
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+}
+
+/*
+ * Adopt the folder and extension the bundle actually uses. An element names
+ * its artwork logically ("tachneedle"); which path that resolves to belongs to
+ * the firmware that built the bundle, so read it back rather than forcing the
+ * local setting onto someone else's layout and then reporting every asset as
+ * missing.
+ */
+function adoptNaming(paths) {
+  const imgs = paths.filter(p => p !== "dash.json" && !p.startsWith("font/") && p.includes("/"));
+  if (!imgs.length) return;
+  const dir = imgs[0].slice(0, imgs[0].lastIndexOf("/") + 1);
+  if (imgs.every(p => p.startsWith(dir))) { naming.dir = dir; $("namingDir").value = dir; }
+  const m = imgs[0].match(/(\.[^./]+)$/);
+  if (m && imgs.every(p => p.endsWith(m[1]))) { naming.ext = m[1]; $("namingExt").value = m[1]; }
+}
+
+async function importFgl(bytes, fileName) {
+  const entries = parseFgl(bytes);
+
+  const jsonEntry = entries.find(e => e.path === "dash.json") ||
+                    entries.find(e => e.path.split("/").pop() === "dash.json");
+  if (!jsonEntry)
+    throw new Error("the bundle has no dash.json, so there's no layout in it to open");
+
+  let doc;
+  try {
+    doc = JSON.parse(new TextDecoder().decode(jsonEntry.bytes));
+  } catch {
+    throw new Error("the bundle's dash.json isn't valid JSON");
+  }
+  if (!Array.isArray(doc.elements))
+    throw new Error("the bundle's dash.json has no elements list");
+
+  /* Nothing is touched until the layout has parsed, so a bad bundle leaves
+     whatever you were working on alone. */
+  const assets = new Map();
+  let bgImg = null;
+  const notes = [];
+
+  for (const e of entries) {
+    if (e === jsonEntry) continue;
+    if (e.jpeg) {
+      try {
+        const { bin, img } = await jpegToLvgl(e.bytes);
+        assets.set(e.path, {
+          bytes: bin, source: "background", jpegBytes: e.bytes,
+          note: `${img.width}×${img.height}, arrived as JPEG`,
+        });
+        if (!bgImg) bgImg = img;
+        notes.push(`${e.path} decoded from JPEG (${fmtKB(e.bytes.length)} → ${fmtKB(bin.length)} on the dash)`);
+      } catch (err) {
+        notes.push(`${e.path} is flagged JPEG but ${err.message}`);
+      }
+      continue;
+    }
+    assets.set(e.path, { bytes: e.bytes, source: "file" });
+  }
+
+  state.doc = doc;
+  const L = doc.layout || {};
+  state.id = L.id || uuid4();
+  state.revision = Number(L.revision) || 0;
+  state.name = L.name || fileName.replace(/\.fglayout$/i, "");
+  state.assets = assets;
+  state.inFirmware = new Set();
+  state.userNeeds = new Set();
+  state.selected = null;
+  state.testAngle = null;
+  decodeCache.clear();
+
+  /* An imported background becomes the working image, so the JPEG export path
+     and the crop controls have something to act on. Identity zoom and offset
+     mean backgroundImageData() reproduces it pixel-for-pixel unless moved. */
+  if (bgImg) {
+    state.img = bgImg;
+    state.zoom = 1; state.offX = 0; state.offY = 0;
+    $("zoom").value = 100;
+    $("zoomOut").textContent = "1.00×";
+    $("btnAddBg").disabled = false;
+    $("btnClearImage").disabled = false;
+  }
+
+  adoptNaming([...assets.keys()]);
+  $("btnRemix").disabled = false;
+
+  renderIdentity();
+  renderElementPanel();
+  renderElementList();
+  renderAssets();
+  drawPreview();
+
+  const missing = [...requiredAssets().keys()].filter(p => !assets.has(p));
+  const { errors } = validateLayout();
+
+  say("layoutStatus",
+    `Opened ${fileName}: ${doc.elements.length} element${doc.elements.length === 1 ? "" : "s"} ` +
+    `and ${assets.size} file${assets.size === 1 ? "" : "s"}, revision ${state.revision}.` +
+    (notes.length ? "\n  " + notes.join("\n  ") : "") +
+    (missing.length
+      ? `\nThe layout also expects ${missing.join(", ")} — the dash may have those built in, ` +
+        `but this preview can't draw them.`
+      : "") +
+    (errors.length
+      ? `\nIt won't export as-is: ${errors.length} problem${errors.length === 1 ? "" : "s"} to fix first.`
+      : ""),
+    errors.length > 0);
+}
+
+$("btnImportFgl").onclick = () => $("fileFgl").click();
+$("fileFgl").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    await importFgl(await readBytes(f), f.name);
+  } catch (err) {
+    say("layoutStatus", `${f.name} couldn't be opened: ${err.message}`, true);
+  }
+  e.target.value = "";
+};
+
+/*
+ * Publishing someone else's layout under its own id would collide with the
+ * original on any dash that already has it -- same id, and a revision that
+ * marches independently. A remix gets a fresh identity and keeps a pointer
+ * back to where it came from.
+ */
+$("btnRemix").onclick = () => {
+  if (!state.doc) return;
+  const from = state.id;
+  state.doc.layout = Object.assign({}, state.doc.layout, { parent: from });
+  state.id = uuid4();
+  state.revision = 0;
+  state.name = state.name.replace(/\s*\(remix\)$/i, "") + " (remix)";
+  renderIdentity();
+  say("layoutStatus",
+    `New identity ${state.id}, starting at revision 0.\n` +
+    `Recorded as a remix of ${from}. Rename it under Export before you publish it.`);
+};
+
+$("btnLoadImage").onclick = () => $("fileImage").click();
+$("fileImage").onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    state.img = img;
+    state.zoom = 1; state.offX = 0; state.offY = 0;
+    $("zoom").value = 100;
+    $("zoomOut").textContent = "1.00×";
+    $("btnAddBg").disabled = false;
+    $("btnClearImage").disabled = false;
+    drawPreview();
+  };
+  img.src = URL.createObjectURL(f);
+  e.target.value = "";
+};
+
+$("btnClearImage").onclick = () => {
+  state.img = null;
+  $("btnAddBg").disabled = true;
+  $("btnClearImage").disabled = true;
+  drawPreview();
+};
+
+/*
+ * Render just the cropped photo, with none of the layout drawn on top.
+ * The on-screen preview composites elements over the background so you can
+ * judge the design, but the exported background must contain only the
+ * photo -- otherwise placeholders and lamp artwork get baked into it.
+ */
+function backgroundImageData() {
+  const c = document.createElement("canvas");
+  c.width = DISPLAY_PX; c.height = DISPLAY_PX;
+  const g = c.getContext("2d", { willReadFrequently: true });
+
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, DISPLAY_PX, DISPLAY_PX);
+
+  if (state.img) {
+    const im = state.img;
+    const cover = Math.max(DISPLAY_PX / im.width, DISPLAY_PX / im.height);
+    const s = cover * state.zoom;
+    const dw = im.width * s, dh = im.height * s;
+    g.drawImage(im, (DISPLAY_PX - dw) / 2 + state.offX,
+                    (DISPLAY_PX - dh) / 2 + state.offY, dw, dh);
+  }
+  return g.getImageData(0, 0, DISPLAY_PX, DISPLAY_PX);
+}
+
+/*
+ * Encode the cropped background as a baseline JPEG blob (for JPEG-on-dash).
+ * Canvas toBlob produces baseline JPEG, which is what the dash's TJpgDec
+ * decoder requires. Returns a Uint8Array, or null on failure.
+ */
+/* True once the crop controls have been touched, meaning a stored source image
+   no longer represents what the background should be. */
+function bgMoved() {
+  return state.zoom !== 1 || state.offX !== 0 || state.offY !== 0;
+}
+
+async function backgroundJpegBytes(quality) {
+  const c = document.createElement("canvas");
+  c.width = DISPLAY_PX; c.height = DISPLAY_PX;
+  const g = c.getContext("2d");
+  g.putImageData(backgroundImageData(), 0, 0);
+  const blob = await new Promise(res =>
+    c.toBlob(res, "image/jpeg", Math.max(0.1, Math.min(1, quality / 100))));
+  if (!blob) return null;
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+/*
+ * Adding the background is two things, and only ever wanted together: a file
+ * for the dash to load, and an element telling it to draw that file. Adding the
+ * file alone produced a layout that transferred a megabyte and rendered
+ * nothing, so the element comes with it -- placed first in paint order, since a
+ * background under the needles is the only arrangement that makes sense.
+ */
+$("btnAddBg").onclick = () => {
+  const path = $("bgPath").value.trim().replace(/^\/+/, "");
+  if (!path || !state.img) return;
+  const px = toRgb565(backgroundImageData(), $("dither").checked);
+  const bin = buildLvglImage(px, DISPLAY_PX, DISPLAY_PX, CF_RGB565);
+  state.assets.set(path, { bytes: bin, source: "background" });
+  decodeCache.delete(path);
+
+  let note = `Added ${path} — the cropped photo only, without the layout drawn on it.`;
+
+  if (!state.doc) {
+    state.doc = { version: 1, screen: { w: DISPLAY_PX, h: DISPLAY_PX }, elements: [] };
+    state.id = uuid4();
+    state.revision = 0;
+    state.name = "Untitled layout";
+    renderIdentity();
+  }
+  if (!Array.isArray(state.doc.elements)) state.doc.elements = [];
+
+  /* The element's src is the filename with the folder and extension stripped,
+     because that is how assetPathFor() puts it back together. */
+  const src = path.split("/").pop().replace(/\.[^.]+$/, "");
+
+  if (!backgroundElement()) {
+    if (state.doc.elements.length >= MAX_ELEMENTS) {
+      note += `\nNo element was added to draw it — the layout is already at the ` +
+              `${MAX_ELEMENTS}-element limit, so it would transfer and never appear.`;
+    } else {
+      const el = makeElement("image");
+      el.id = "background";
+      el.src = src;
+      el.x = 0; el.y = 0;
+      state.doc.elements.unshift(el);            // first drawn, so everything sits on top
+      if (state.selected != null) state.selected += 1;
+      note += `\nAdded an image element "${el.id}" to draw it, first in the list ` +
+              `so the needles sit on top.`;
+      renderElementPanel();
+      renderElementList();
+    }
+  }
+
+  renderAssets();
+  drawPreview();
+  say("layoutStatus", note);
+};
+
+$("btnAddFile").onclick = () => $("fileAny").click();
+/*
+ * Work out where an added file belongs. The layout already says which
+ * artwork it needs, so a file whose name matches one of those entries goes
+ * to that exact path -- no guessing, and it works whatever the extension.
+ * Only unrecognised files fall back to a guess.
+ */
+function pathForAddedFile(name) {
+  const wanted = requiredAssets();
+  for (const path of wanted.keys()) {
+    if (path.split("/").pop().toLowerCase() === name.toLowerCase()) return path;
+  }
+  // Same base name, different extension: still almost certainly the one.
+  const base = name.replace(/\.[^.]+$/, "").toLowerCase();
+  for (const path of wanted.keys()) {
+    const wb = path.split("/").pop().replace(/\.[^.]+$/, "").toLowerCase();
+    if (wb === base) return path;
+  }
+  if (/font/i.test(name)) return "font/" + name;
+  if (/\.(bin|png|jpe?g|webp)$/i.test(name)) return naming.dir + name;
+  return name;
+}
+
+/*
+ * Source images get converted; anything else (already-built binaries,
+ * fonts) is stored as-is.
+ */
+async function addFile(f) {
+  if (/\.(ttf|otf|woff2?)$/i.test(f.name)) {
+    try { return await addFontFile(f); } catch (err) { return err.message; }
+  }
+  const isSource = /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name) ||
+                   (f.type || "").startsWith("image/");
+  const path = pathForAddedFile(f.name);
+
+  if (isSource) {
+    try {
+      const { bytes, note } = await convertImageToLvgl(f, $("dither").checked);
+      state.assets.set(path, { bytes, source: "converted", note });
+      return `${f.name} → ${note}`;
+    } catch {
+      return `${f.name} could not be read as an image`;
+    }
+  }
+  state.assets.set(path, { bytes: await readBytes(f), source: "file" });
+  return null;
+}
+
+$("fileAny").onchange = async e => {
+  const notes = [];
+  for (const f of e.target.files) {
+    const n = await addFile(f);
+    if (n) notes.push(n);
+  }
+  renderAssets();
+  if (notes.length) say("layoutStatus", "Converted for the dash:\n  " + notes.join("\n  "));
+  e.target.value = "";
+};
+
+/* ------------------------------------------------ header inspector ---- */
+$("btnInspect").onclick = () => $("fileBin").click();
+$("fileBin").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const bytes = await readBytes(f);
+  const h = readLvglHeader(bytes);
+  const out = $("inspectOut");
+
+  if (!h) { out.textContent = `${f.name} is too small to hold a header.`; e.target.value = ""; return; }
+
+  const pixelBytes = bytes.length - HEADER_LEN;
+  const expect = h.stride * h.h;
+  const mine = buildLvglImage(new Uint8Array(0), h.w, h.h).slice(0, HEADER_LEN);
+  const same = [...mine].every((b, i) => b === bytes[i]);
+
+  out.textContent =
+`${f.name}  (${bytes.length.toLocaleString()} bytes)
+
+  magic     0x${h.magic.toString(16).padStart(2,"0")}   ${h.magic === LV_MAGIC ? "LVGL 9" : "not an LVGL 9 image"}
+  format    0x${h.cf.toString(16).padStart(2,"0")}   ${CF_NAMES[h.cf] || "unrecognised"}
+  flags     0x${h.flags.toString(16).padStart(4,"0")}
+  size      ${h.w} × ${h.h}
+  stride    ${h.stride} bytes per row
+  pixels    ${pixelBytes.toLocaleString()} bytes  ${pixelBytes === expect ? "(matches)" : `(header implies ${expect.toLocaleString()})`}
+
+  first 12 bytes  ${[...bytes.slice(0,12)].map(b=>b.toString(16).padStart(2,"0")).join(" ")}
+  this tool would write  ${[...mine].map(b=>b.toString(16).padStart(2,"0")).join(" ")}
+
+  ${same ? "Same header layout — this tool's output will load the same way."
+         : "Headers differ. If this file works on your dash, change CF_RGB565 in the script to 0x" + h.cf.toString(16) + "."}`;
+  e.target.value = "";
+};
+
+/* ------------------------------------------------------ validation ---- */
+/*
+ * Mirrors the engine's failure paths, split by consequence: an ERROR is a
+ * condition that makes flashgauge_layout_create() abort (a failed known-type
+ * element throws the whole layout back to the built-in screen), a WARNING is
+ * something the engine tolerates by truncating or skipping.
+ */
+function validateLayout() {
+  const errors = [], warns = [];
+  const els = state.doc?.elements;
+  if (!Array.isArray(els)) return { errors: ["No layout loaded."], warns };
+
+  if (els.length > MAX_ELEMENTS)
+    errors.push(`${els.length} elements — the engine caps at ${MAX_ELEMENTS}`);
+  const nb = els.filter(e => e && e.bind).length;
+  if (nb > MAX_BINDINGS)
+    errors.push(`${nb} bindings — the engine caps at ${MAX_BINDINGS}`);
+
+  const chans = new Set(CHANNELS.map(c => c.key));
+  const ids = new Set();
+  const known = new Set(["image", "needle", "label", "shape", "bar"]);
+
+  const srcOk = s => state.assets.has(assetPathFor(s)) ||
+                     coveredByFirmware(assetPathFor(s), s, "img");
+  const fontOk = f => state.assets.has(fontPathFor(f)) ||
+                      coveredByFirmware(fontPathFor(f), f, "font");
+
+  for (const el of els) {
+    const at = el.id || "(no id)";
+    if (!el.id) warns.push("an element has no id — firmware error messages will print '?'");
+    else if (ids.has(el.id)) warns.push(`${at}: duplicate id`);
+    ids.add(el.id);
+
+    if (!known.has(el.type)) {
+      warns.push(`${at}: type "${el.type}" — this firmware skips it (newer configurator?)`);
+      continue;
+    }
+
+    if (el.type === "image" || el.type === "needle") {
+      if (!el.src) errors.push(`${at}: no artwork chosen — create_${el.type}() fails`);
+      else if (!srcOk(el.src))
+        errors.push(`${at}: "${el.src}" isn't added or built in — the dash can't resolve it`);
+    }
+    if (el.type === "needle") {
+      if (!Array.isArray(el.pivot) || el.pivot.length !== 2 ||
+          !el.pivot.every(Number.isFinite))
+        errors.push(`${at}: needle pivot must be two numbers — create_needle() fails`);
+      if (!el.bind) errors.push(`${at}: a needle needs a binding — create_needle() fails`);
+    }
+    if (el.type === "label" && el.font && !fontOk(el.font))
+      errors.push(`${at}: font "${el.font}" isn't added or built in — create_label() fails`);
+    if (el.type === "bar") {
+      if (!(Number(el.w) > 0 && Number(el.h) > 0))
+        errors.push(`${at}: a bar needs a width and height`);
+      if (!el.bind) errors.push(`${at}: a bar needs a binding — create_bar() fails`);
+    }
+
+    const b = el.bind;
+    if (!b) continue;
+    if (!chans.has(b.channel))
+      errors.push(`${at}: signal "${b.channel}" isn't one the firmware knows — the binding fails`);
+
+    const mode = bindMode(el);
+    if ((mode === "rotation" || mode === "value") &&
+        !(Number(b.in_max) > Number(b.in_min)))
+      errors.push(`${at}: value-at-end must exceed value-at-start`);
+    if ((mode === "rotation" || mode === "value") && b.channel === "speed" && Number(b.in_max) < 400)
+      warns.push(`${at}: speed is in tenths of ${unitLabel("speed")} — value-at-end ${b.in_max} is only ${(Number(b.in_max) / 10).toFixed(0)} ${unitLabel("speed")}`);
+    if (mode === "fmt") {
+      const c = chanInfo(b.channel);
+      if ((b.format || "").length > MAX_FMT)
+        warns.push(`${at}: format longer than ${MAX_FMT} chars — the firmware truncates it`);
+      if ((b.suffix || "").length > MAX_SUFFIX)
+        warns.push(`${at}: suffix longer than ${MAX_SUFFIX} chars — the firmware truncates it`);
+      if (c && c.kind === "time" && b.style !== "time")
+        warns.push(`${at}: "${b.channel}" is a clock — it shows minutes-since-midnight without the time style`);
+      if (c && c.kind !== "time" && b.style === "time")
+        warns.push(`${at}: time style on "${b.channel}", which isn't a clock`);
+      if (c && c.kind === "flag" && Number(b.decimals) > 0)
+        warns.push(`${at}: decimals on "${b.channel}", which is only ever 0 or 1`);
+      if (b.suffix === "auto" && c && c.unit === "none")
+        warns.push(`${at}: suffix "auto" is empty for "${b.channel}" — it has no unit`);
+      if (b.hide_when && !chans.has(b.hide_when))
+        warns.push(`${at}: hide-when signal "${b.hide_when}" is unknown — the firmware ignores it`);
+    }
+    if (mode === "map") {
+      if (!Array.isArray(b.map) || !b.map.length)
+        errors.push(`${at}: the value → text map is empty — the binding fails`);
+      else {
+        if (b.map.length > MAX_MAP_ENTRIES)
+          warns.push(`${at}: over ${MAX_MAP_ENTRIES} map entries — extras are dropped`);
+        for (const m of b.map)
+          if ((m.text || "").length > MAX_MAP_TEXT)
+            warns.push(`${at}: map text "${m.text}" over ${MAX_MAP_TEXT} chars — truncated`);
+      }
+    }
+  }
+  /*
+   * Fonts from files: the dash loads each one whole into the LVGL heap, keeps
+   * at most MAX_FS_FONTS of them, and draws nothing for a character a font
+   * doesn't carry.
+   */
+  const fsFonts = new Map();   /* name -> parsed font | null */
+  for (const el of els) {
+    if (el.type !== "label" || !el.font) continue;
+    const a = state.assets.get(fontPathFor(el.font));
+    if (!a) continue;
+    const at = el.id || "(no id)";
+    const f = binfontFromBytes(a.bytes);
+    fsFonts.set(el.font, f);
+    if (fontPathFor(el.font).length + 1 > 47)
+      errors.push(`${at}: font name "${el.font}" is too long for the dash's path buffer`);
+    if (!f) { warns.push(`${at}: ${fontPathFor(el.font)} isn't an LVGL font this tool can read`); continue; }
+    const miss = missingGlyphs(f, labelChars(el));
+    if (miss.length)
+      warns.push(`${at}: font "${el.font}" has no ${miss.map(c => `“${c}”`).join(" ")} — ` +
+                 `the dash draws nothing there`);
+  }
+  if (fsFonts.size > MAX_FS_FONTS)
+    errors.push(`${fsFonts.size} font files in use — the dash loads at most ${MAX_FS_FONTS} ` +
+                `(fonts-update firmware); share sizes between labels`);
+  const ram = [...fsFonts.values()].reduce((s, f) => s + (f ? f.ram : 0), 0);
+  if (ram > FONT_RAM_WARN)
+    warns.push(`fonts take about ${fmtKB(ram)} of the dash's 2 MB graphics memory — ` +
+               `consider fewer sizes or "Only what its labels show"`);
+  for (const [path, sig] of state.fontFail)
+    if (state.assets.has(path) || fontSources().some(s => (s.sizes || []).some(
+          z => fontPathFor(fontName(s.base, z)) === path)))
+      errors.push(`${path}: ${state.fontErr.get(path) || "couldn't be built"}`);
+
+  /*
+   * A file nothing points at still transfers -- a 720x720 background is a
+   * megabyte and nearly a minute of install for something the dash will never
+   * draw. The engine doesn't care, so this is a warning, but it is the one
+   * failure that looks exactly like a broken dash from the outside.
+   */
+  const wanted = new Set(requiredAssets().keys());
+  for (const path of state.assets.keys())
+    if (!wanted.has(path))
+      warns.push(`${path} is installed but no element uses it — it transfers ` +
+                 `(${fmtKB(state.assets.get(path).bytes.length)}) and never appears`);
+
+  return { errors, warns };
+}
+
+/* Run before any export. Returns true when it's safe to ship. */
+function exportGate() {
+  const { errors, warns } = validateLayout();
+  if (errors.length) {
+    say("exportStatus",
+      "Not exported — this layout would fail on the dash and fall back to the " +
+      "built-in screen:\n  • " + errors.join("\n  • ") +
+      (warns.length ? "\n\nAlso worth a look:\n  • " + warns.join("\n  • ") : ""), true);
+    return false;
+  }
+  if (warns.length)
+    say("exportStatus", "Heads up:\n  • " + warns.join("\n  • "));
+  return true;
+}
+
+/* ---------------------------------------------------------- export ---- */
+/*
+ * FGL1 bundle: everything a layout needs in one file, so a person moves
+ * exactly one thing to their phone. Layout:
+ *
+ *   "FGL1"  u16 count  u16 reserved
+ *   then per file:
+ *     u16 pathLen | path utf-8 | u32 size | u32 crc32 | u32 flags | data
+ *
+ * flags is reserved (zero); it is where per-entry compression goes later.
+ * The app unpacks this and runs the normal file-by-file install -- the
+ * dash never sees the container.
+ */
+const FGL_ENTRY_JPEG = 0x01;   // blob is a baseline JPEG; dash decodes to RGB565
+
+function buildFgl(files) {
+  const enc = new TextEncoder();
+  const entries = files.map(f => ({
+    pb: enc.encode(f.path), bytes: f.bytes, jpeg: !!f.jpeg,
+  }));
+
+  let size = 8;
+  for (const e of entries) size += 2 + e.pb.length + 12 + e.bytes.length;
+
+  const out = new Uint8Array(size);
+  const dv = new DataView(out.buffer);
+  out.set([0x46, 0x47, 0x4C, 0x31], 0);           // "FGL1"
+  dv.setUint16(4, entries.length, true);
+
+  let o = 8;
+  for (const e of entries) {
+    dv.setUint16(o, e.pb.length, true); o += 2;
+    out.set(e.pb, o); o += e.pb.length;
+    dv.setUint32(o, e.bytes.length, true); o += 4;
+    dv.setUint32(o, crc32(e.bytes), true); o += 4;
+    dv.setUint32(o, e.jpeg ? FGL_ENTRY_JPEG : 0, true); o += 4;   // flags
+    out.set(e.bytes, o); o += e.bytes.length;
+  }
+  return out;
+}
+
+function download(name, bytes) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+$("btnExport").onclick = async () => {
+  if (!state.doc) {
+    say("exportStatus", "Load a dash.json first, or start a blank layout.", true);
+    return;
+  }
+  if (!exportGate()) return;
+
+  // The phone matches files by name, so duplicates across folders can't be
+  // told apart. Catch it here rather than on the dash.
+  const names = new Map();
+  for (const path of state.assets.keys()) {
+    const n = path.split("/").pop();
+    if (names.has(n)) {
+      say("exportStatus",
+        `Two files are both named "${n}" (${names.get(n)} and ${path}). ` +
+        `The phone app matches by name, so rename one before exporting.`, true);
+      return;
+    }
+    names.set(n, path);
+  }
+
+  state.revision += 1;
+  state.id = state.id || uuid4();
+
+  const doc = { ...state.doc };
+  doc.layout = { id: state.id, revision: state.revision, name: state.name };
+  doc.assets = [...state.assets].map(([path, a]) => ({
+    path,
+    size: a.bytes.length,
+    crc32: hex8(crc32(a.bytes)),
+  }));
+
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(doc, null, 2));
+
+  // Build the file list. The opaque background can ship as a baseline JPEG
+  // that the dash decodes to RGB565 -- much smaller to transfer. Only the
+  // background qualifies (lamps/needle have transparency, which JPEG can't
+  // carry); everything else ships as its stored .bin.
+  const wantJpeg = $("bgJpeg").checked && !!state.img;
+  const quality = Number($("bgQuality").value) || 85;
+
+  const files = [];
+  let jpegNote = "";
+  for (const [path, a] of state.assets) {
+    if (wantJpeg && a.source === "background") {
+      // An imported JPEG that hasn't been re-cropped goes back out byte-for-byte.
+      // Re-encoding it here would compress an already-compressed image, and the
+      // loss compounds every time a layout is passed along and remixed.
+      if (a.jpegBytes && !bgMoved()) {
+        files.push({ path, bytes: a.jpegBytes, jpeg: true });
+        jpegNote = `\nBackground passed through as the JPEG it arrived as: ` +
+                   `${fmtKB(a.jpegBytes.length)}, not re-compressed.`;
+        continue;
+      }
+      const jb = await backgroundJpegBytes(quality);
+      if (jb && jb.length < a.bytes.length) {
+        files.push({ path, bytes: jb, jpeg: true });
+        jpegNote = `\nBackground sent as JPEG: ${fmtKB(jb.length)} instead of ` +
+                   `${fmtKB(a.bytes.length)}.`;
+        continue;
+      }
+      // JPEG failed or wasn't smaller -> fall back to the raw .bin silently.
+    }
+    files.push({ path, bytes: a.bytes });
+  }
+  // dash.json last: a valid dash.json marks an install complete.
+  files.push({ path: "dash.json", bytes: jsonBytes });
+
+  const slug = state.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+               || "layout";
+  const bundle = buildFgl(files);
+  download(`${slug}-rev${state.revision}.fglayout`, bundle);
+
+  renderIdentity();
+  const prior = $("exportStatus").classList.contains("hidden")
+    ? "" : $("exportStatus").textContent + "\n\n";
+  say("exportStatus", prior +
+    `Exported revision ${state.revision}: one file, ${fmtKB(bundle.length)}.` +
+    jpegNote +
+    `\nMove it to your phone and choose it in the app's Update tab.`);
+};
+
+/* Loose files for the wired workflow (ftp1_send.py can take a directory). */
+$("btnExportLoose").onclick = async () => {
+  if (!state.doc) {
+    say("exportStatus", "Load a dash.json first, or start a blank layout.", true);
+    return;
+  }
+  if (!exportGate()) return;
+  const doc = { ...state.doc };
+  doc.layout = { id: state.id || uuid4(), revision: state.revision, name: state.name };
+  doc.assets = [...state.assets].map(([path, a]) => ({
+    path, size: a.bytes.length, crc32: hex8(crc32(a.bytes)),
+  }));
+  for (const [path, a] of state.assets) {
+    download(path.split("/").pop(), a.bytes);
+    await new Promise(r => setTimeout(r, 250));   // browsers throttle bursts
+  }
+  download("dash.json", new TextEncoder().encode(JSON.stringify(doc, null, 2)));
+  say("exportStatus",
+    `Exported ${state.assets.size + 1} separate files at revision ${state.revision} ` +
+    `(unchanged — loose export doesn't bump it).`);
+};
+
+
+/* ------------------------------------------------- vehicle settings ---- *
+ * vehicle.json, the per-bike config stored on the harness adapter EEPROM
+ * and parsed by fg_channels.c. Everything in a loaded file is kept -- this
+ * panel only rewrites the keys it edits -- so comments and keys a newer
+ * firmware understands survive a round trip.
+ *
+ * Firmware contract (fg_channels.c / fg_adapter.h):
+ *   rpm_pulses_per_rev, speed_pulses_per_rev (>= 1), wheel_circ_mm (>= 1)
+ *   *_temp_curve: [[adc, tenths_C], ...], strictly ascending adc,
+ *                 2..16 points (FG_CURVE_MAX_PTS); fewer than 2 = no curve
+ *   whole file <= 12032 bytes (FG_ADAPTER_CONFIG_MAX)
+ * ------------------------------------------------------------------ */
+const VEH_DEFAULTS = { rpm_pulses_per_rev: 2, speed_pulses_per_rev: 4, wheel_circ_mm: 432 };
+const CURVE_MAX_PTS = 16;
+const ADAPTER_CONFIG_MAX = 12032;
+const ADC_MAX = 4095;
+const VEH_CURVES = [
+  { key: "oil_temp_curve",     label: "Oil temperature" },
+  { key: "coolant_temp_curve", label: "Coolant temperature" },
+];
+const vehicle = { doc: null, name: "vehicle.json", curves: {} };
+
+function looksLikeVehicle(doc) {
+  return doc && typeof doc === "object" && !Array.isArray(doc) && !("elements" in doc) &&
+    ["rpm_pulses_per_rev", "speed_pulses_per_rev", "wheel_circ_mm",
+     "oil_temp_curve", "coolant_temp_curve"].some(k => k in doc);
+}
+
+function vehLoad(doc, name, note) {
+  vehicle.doc = doc;
+  vehicle.name = name || "vehicle.json";
+  vehicle.curves = {};
+  for (const c of VEH_CURVES) {
+    const pts = Array.isArray(doc[c.key]) ? doc[c.key] : [];
+    vehicle.curves[c.key] = pts
+      .filter(p => Array.isArray(p) && p.length >= 2 && isFinite(p[0]) && isFinite(p[1]))
+      .map(p => ({ adc: Math.round(p[0]), c: Math.round(p[1]) / 10 }));
+  }
+  $("vehRpmPpr").value   = doc.rpm_pulses_per_rev   ?? VEH_DEFAULTS.rpm_pulses_per_rev;
+  $("vehSpeedPpr").value = doc.speed_pulses_per_rev ?? VEH_DEFAULTS.speed_pulses_per_rev;
+  $("vehWheel").value    = doc.wheel_circ_mm        ?? VEH_DEFAULTS.wheel_circ_mm;
+  $("vehFields").style.display = "";
+  $("vehStatus").classList.add("hidden");
+  renderCurves();
+  if (note) say("vehLoadStatus", note);
+}
+
+/* Moto tire size -> rolling circumference. Same estimate as the app. */
+function tireCircumference(size) {
+  const m = /(\d{2,3})\s*\/\s*(\d{2})\s*\D{0,3}\s*(\d{2})/.exec(size || "");
+  if (!m) return null;
+  const [w, a, r] = [+m[1], +m[2], +m[3]];
+  if (w < 60 || w > 360 || a < 25 || a > 100 || r < 10 || r > 23) return null;
+  return Math.round(Math.PI * (r * 25.4 + 2 * w * a / 100) * 0.97);
+}
+
+/* NTC sender to ground, pull-up to Vpu, read by an ADC referenced to Vref. */
+function ntcCounts(tC, g) {
+  const T = tC + 273.15;
+  const r = g.r25 * Math.exp(g.beta * (1 / T - 1 / 298.15));
+  const v = g.vpu * r / (g.rpu + r);
+  return Math.round(Math.min(Math.max(v / g.vref, 0), 1) * ((1 << g.bits) - 1));
+}
+
+function curveProblems(pts) {
+  const out = [];
+  if (pts.length === 1) out.push("one point isn't a curve: add another or clear it");
+  if (pts.length > CURVE_MAX_PTS) out.push(`the dash keeps the first ${CURVE_MAX_PTS} points only`);
+  const sorted = [...pts].sort((x, y) => x.adc - y.adc);
+  for (let i = 1; i < sorted.length; i++)
+    if (sorted[i].adc === sorted[i - 1].adc) { out.push(`two points share ADC ${sorted[i].adc}`); break; }
+  if (pts.some(p => p.adc < 0 || p.adc > ADC_MAX)) out.push(`ADC counts run 0–${ADC_MAX}`);
+  if (pts.some(p => p.c < -40 || p.c > 250)) out.push("temperatures outside −40…250 °C");
+  return out;
+}
+
+function renderCurves() {
+  const host = $("vehCurves");
+  host.innerHTML = "";
+  for (const c of VEH_CURVES) host.appendChild(curveEditor(c));
+}
+
+function curveEditor(c) {
+  const pts = vehicle.curves[c.key];
+  const wrap = document.createElement("div");
+
+  const head = document.createElement("div");
+  head.className = "subhead";
+  head.textContent = c.label;
+  wrap.appendChild(head);
+
+  const note = document.createElement("div");
+  note.className = "curve-note";
+  note.textContent = pts.length
+    ? "Sender reading (ADC counts) against temperature. The dash interpolates between points and holds the end values beyond them."
+    : "No curve: the dash hides this reading (layouts can use the matching “sender present” flag).";
+  wrap.appendChild(note);
+
+  if (pts.length) {
+    const t = document.createElement("table");
+    t.className = "curve";
+    t.innerHTML = "<thead><tr><th>ADC counts</th><th>°C</th><th></th></tr></thead>";
+    const tb = document.createElement("tbody");
+    pts.forEach((p, i) => {
+      const tr = document.createElement("tr");
+      const mk = (val, step, set) => {
+        const td = document.createElement("td");
+        const inp = document.createElement("input");
+        inp.type = "number"; inp.step = step; inp.value = val;
+        inp.onchange = () => { set(Number(inp.value)); drawCurve(canvas, pts); showProblems(); };
+        td.appendChild(inp);
+        return td;
+      };
+      tr.appendChild(mk(p.adc, 1, v => { p.adc = Math.round(v); }));
+      tr.appendChild(mk(p.c, 0.1, v => { p.c = Math.round(v * 10) / 10; }));
+      const act = document.createElement("td");
+      act.className = "act";
+      const del = document.createElement("button");
+      del.textContent = "✕"; del.title = "Remove point";
+      del.onclick = () => { pts.splice(i, 1); renderCurves(); };
+      act.appendChild(del);
+      tr.appendChild(act);
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    wrap.appendChild(t);
+  }
+
+  var canvas = document.createElement("canvas");
+  canvas.className = "curve-plot";
+  canvas.width = 600; canvas.height = 150;
+  if (pts.length >= 2) wrap.appendChild(canvas);
+
+  const probs = document.createElement("div");
+  probs.className = "curve-note";
+  probs.style.color = "var(--redline)";
+  wrap.appendChild(probs);
+  function showProblems() { probs.textContent = curveProblems(pts).join(" · "); }
+  showProblems();
+
+  const row = document.createElement("div");
+  row.className = "row"; row.style.marginTop = "8px";
+  const add = document.createElement("button");
+  add.textContent = "+ Point";
+  add.disabled = pts.length >= CURVE_MAX_PTS;
+  add.onclick = () => {
+    const last = pts[pts.length - 1];
+    pts.push(last ? { adc: Math.min(ADC_MAX, last.adc + 100), c: last.c - 10 } : { adc: 2000, c: 60 });
+    renderCurves();
+  };
+  row.appendChild(add);
+  if (pts.length) {
+    const clr = document.createElement("button");
+    clr.textContent = "Clear curve";
+    clr.onclick = () => { pts.length = 0; renderCurves(); };
+    row.appendChild(clr);
+  }
+  wrap.appendChild(row);
+
+  /* Generator: fill the table from an NTC sender model. */
+  const det = document.createElement("details");
+  det.className = "tool";
+  det.innerHTML = `<summary>Generate from an NTC sender</summary>
+    <div class="body">
+      <p class="curve-note">For a thermistor sender to ground with a pull-up to a fixed voltage
+        (FlashGauge's oil input: 1 kΩ to 1.8 V, 12-bit ADC on 1.8 V). Use the sender's datasheet
+        R25 and β — or better, measure it at two temperatures and fit.</p>
+      <div class="gen">
+        <label>R25 (Ω)<input type="number" data-g="r25" value="2200"></label>
+        <label>β (K)<input type="number" data-g="beta" value="3500"></label>
+        <label>Pull-up (Ω)<input type="number" data-g="rpu" value="1000"></label>
+        <label>Pull-up (V)<input type="number" data-g="vpu" value="1.8" step="0.1"></label>
+        <label>ADC ref (V)<input type="number" data-g="vref" value="1.8" step="0.1"></label>
+        <label>ADC bits<input type="number" data-g="bits" value="12"></label>
+        <label>From (°C)<input type="number" data-g="tmin" value="0"></label>
+        <label>To (°C)<input type="number" data-g="tmax" value="150"></label>
+        <label>Step (°C)<input type="number" data-g="step" value="10"></label>
+      </div>
+      <div class="row" style="margin-top:10px"><button data-gen>Replace the table</button></div>
+    </div>`;
+  det.querySelector("[data-gen]").onclick = () => {
+    const g = {};
+    det.querySelectorAll("[data-g]").forEach(i => { g[i.dataset.g] = Number(i.value); });
+    if (!(g.r25 > 0 && g.beta > 0 && g.rpu > 0 && g.vpu > 0 && g.vref > 0 && g.step > 0 &&
+          g.bits >= 8 && g.bits <= 16 && g.tmax > g.tmin)) {
+      probs.textContent = "Check the sender values: all must be positive, and To above From.";
+      return;
+    }
+    const out = [];
+    for (let t = g.tmax; t >= g.tmin - 1e-9 && out.length < CURVE_MAX_PTS; t -= g.step)
+      out.push({ adc: ntcCounts(t, g), c: Math.round(t * 10) / 10 });
+    /* Flat ends of the ADC range carry no information; drop duplicates. */
+    const seen = new Set();
+    pts.length = 0;
+    for (const p of out.sort((x, y) => x.adc - y.adc)) if (!seen.has(p.adc)) { seen.add(p.adc); pts.push(p); }
+    renderCurves();
+  };
+  wrap.appendChild(det);
+
+  if (pts.length >= 2) requestAnimationFrame(() => drawCurve(canvas, pts));
+  return wrap;
+}
+
+function drawCurve(cv, pts) {
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, P = 26;
+  const css = getComputedStyle(document.documentElement);
+  ctx.clearRect(0, 0, W, H);
+  const s = [...pts].sort((a, b) => a.adc - b.adc);
+  if (s.length < 2) return;
+  const tLo = Math.min(...s.map(p => p.c)), tHi = Math.max(...s.map(p => p.c));
+  const x = a => P + (a / ADC_MAX) * (W - 2 * P);
+  const y = t => H - P + 8 - ((t - tLo) / Math.max(1, tHi - tLo)) * (H - 2 * P);
+  ctx.strokeStyle = css.getPropertyValue("--hairline"); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(P, H - P + 8); ctx.lineTo(W - P, H - P + 8); ctx.stroke();
+  ctx.fillStyle = css.getPropertyValue("--dim"); ctx.font = "11px " + css.getPropertyValue("--mono");
+  ctx.fillText("0", P - 4, H - 4); ctx.fillText(String(ADC_MAX), W - P - 24, H - 4);
+  ctx.fillText(`${tHi} °C`, 2, y(tHi) + 4); ctx.fillText(`${tLo} °C`, 2, y(tLo) - 2);
+  ctx.strokeStyle = css.getPropertyValue("--amber"); ctx.lineWidth = 2;
+  ctx.beginPath();
+  s.forEach((p, i) => (i ? ctx.lineTo(x(p.adc), y(p.c)) : ctx.moveTo(x(p.adc), y(p.c))));
+  ctx.stroke();
+  ctx.fillStyle = css.getPropertyValue("--lit");
+  for (const p of s) { ctx.beginPath(); ctx.arc(x(p.adc), y(p.c), 2.5, 0, 2 * Math.PI); ctx.fill(); }
+}
+
+/* Serialise with curve points one per line ("[ 260, 1400 ]"). */
+function vehicleJson(doc) {
+  return JSON.stringify(doc, null, 2)
+    .replace(/\[\s+(-?\d+(?:\.\d+)?),\s+(-?\d+(?:\.\d+)?)\s+\]/g, "[ $1, $2 ]") + "\n";
+}
+
+function vehBuild() {
+  const errs = [];
+  const int = (id, lo, hi, what) => {
+    const v = Number($(id).value);
+    if (!Number.isInteger(v) || v < lo || v > hi) errs.push(`${what} must be a whole number ${lo}–${hi}`);
+    return v;
+  };
+  const doc = { ...vehicle.doc };
+  doc.rpm_pulses_per_rev   = int("vehRpmPpr", 1, 16, "Tach pulses");
+  doc.speed_pulses_per_rev = int("vehSpeedPpr", 1, 64, "Speed pulses");
+  doc.wheel_circ_mm        = int("vehWheel", 100, 4000, "Wheel circumference");
+  for (const c of VEH_CURVES) {
+    const pts = vehicle.curves[c.key];
+    const probs = curveProblems(pts).filter(p => !p.startsWith("the dash keeps"));
+    if (probs.length) errs.push(`${c.label}: ${probs.join(", ")}`);
+    if (pts.length > CURVE_MAX_PTS) errs.push(`${c.label}: at most ${CURVE_MAX_PTS} points`);
+    if (pts.length >= 2)
+      doc[c.key] = [...pts].sort((a, b) => a.adc - b.adc).map(p => [p.adc, Math.round(p.c * 10)]);
+    else
+      delete doc[c.key];
+  }
+  const text = vehicleJson(doc);
+  const bytes = new TextEncoder().encode(text);
+  if (bytes.length > ADAPTER_CONFIG_MAX)
+    errs.push(`${bytes.length} bytes — the adapter holds ${ADAPTER_CONFIG_MAX}`);
+  return { errs, bytes, doc };
+}
+
+$("btnVehOpen").onclick = () => $("fileVehicle").click();
+$("fileVehicle").onchange = async e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  try {
+    const doc = JSON.parse(await f.text());
+    if (!looksLikeVehicle(doc)) {
+      say("vehLoadStatus", `${f.name} doesn't look like vehicle settings (no pulses, wheel or curve keys).`, true);
+      return;
+    }
+    vehLoad(doc, f.name, `Loaded ${f.name}.`);
+  } catch { say("vehLoadStatus", `${f.name} isn't valid JSON.`, true); }
+};
+$("btnVehNew").onclick = () => vehLoad({ ...VEH_DEFAULTS }, "vehicle.json",
+  "Started from the firmware's defaults (what the dash runs with nothing stored).");
+$("btnVehTire").onclick = () => {
+  const mm = tireCircumference($("vehTire").value);
+  if (mm == null) { $("vehTireOut").textContent = "Couldn't read that tire size — use width/aspect-rim, e.g. 180/55-17."; return; }
+  $("vehWheel").value = mm;
+  $("vehTireOut").textContent = `${$("vehTire").value.trim()}: about ${mm} mm per turn (rolling estimate).`;
+};
+$("btnVehExport").onclick = () => {
+  if (!vehicle.doc) return;
+  const { errs, bytes } = vehBuild();
+  if (errs.length) { say("vehStatus", "Not exported:\n• " + errs.join("\n• "), true); return; }
+  download(vehicle.name.replace(/[^\w.-]+/g, "_") || "vehicle.json", bytes);
+  say("vehStatus", `Exported ${vehicle.name} (${bytes.length} B). In the app: Vehicle tab → Import file → Save to dash.\n` +
+                   `Over the wire: python ftp1_send.py COMx --vehicle ${vehicle.name}`);
+};
+
+
+/* ------------------------------------------------------ simulator ---- *
+ * Plays the layout the way the dash would. Everything that decides what
+ * the screen shows is copied from the firmware, not approximated:
+ *
+ *   main loop    lvgl_guider_bm.c: 40 Hz update; RPM smoothed 0.25 IIR
+ *                (snap when within 1 rpm) BEFORE the layout sees it
+ *   bindings     flashgauge_layout.c: rotation = angle_start + frac *
+ *                angle_sweep over [in_min, in_max] after the binding's own
+ *                IIR "filter", applied only when it moves >= deadband
+ *                (default 20 = 2 deg); bars the same with "> deadband";
+ *                visible (+invert); hide_when; text_render (renderFmtText)
+ *   sweep        lv_anim ease-in-out angle_start -> end -> start over
+ *                sweep_ms each way; on completion the filter restarts at
+ *                in_min
+ *   channels     fg_channels.c: speed and distance in tenths of the
+ *                layout's unit, temperatures whole degrees, clock minutes
+ *                and derived clock_h / clock_m / clock_pm
+ * ------------------------------------------------------------------ */
+const SIM_TICK_MS = 25;
+const FLASH_HALF_MS = 350;                 /* ~86 flashes/min, as the M4 does */
+
+const kph = () => docUnits().speed === "kph";
+const degC = () => docUnits().temp === "c";
+const mphToLayout = mph => kph() ? mph * 1.609344 : mph;
+const cToLayout = c => degC() ? c : c * 9 / 5 + 32;
+
+/* Which channels this layout actually uses, so the controls can say so. */
+function usedChannels() {
+  const used = new Set();
+  for (const el of state.doc?.elements || []) {
+    const b = el.bind;
+    if (!b) continue;
+    if (b.channel) used.add(b.channel);
+    if (b.hide_when) used.add(b.hide_when);
+  }
+  if (used.has("clock_h") || used.has("clock_m") || used.has("clock_pm")) used.add("clock");
+  return used;
+}
+
+function rotParams(b) {
+  return {
+    lo: Number(b.in_min) || 0,
+    hi: Number.isFinite(Number(b.in_max)) ? Number(b.in_max) : 100,
+    a0: Number(b.angle_start) || 0,
+    sw: Number(b.angle_sweep) || 0,
+    db: b.deadband != null ? Number(b.deadband) : 20,
+    alpha: Number(b.filter) || 0,
+    sweep: !!b.sweep,
+    sweepMs: Number(b.sweep_ms) || 800,
+  };
+}
+function barParams(b) {
+  return {
+    lo: Number(b.in_min) || 0,
+    hi: Number.isFinite(Number(b.in_max)) ? Number(b.in_max) : 100,
+    db: Number(b.deadband) || 0,
+    alpha: Number(b.filter) || 0,
+    sweep: !!b.sweep,
+    sweepMs: Number(b.sweep_ms) || 800,
+  };
+}
+const easeInOut = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+
+/* lv_anim with playback: up over sweep_ms, back over sweep_ms. */
+function sweepPos(ms) {
+  if (sim.sweepT == null) return null;
+  const t = sim.sweepT;
+  if (t >= 2 * ms) return null;
+  return t < ms ? easeInOut(t / ms) : easeInOut(1 - (t - ms) / ms);
+}
+
+function simNeedleDeg(el) {
+  const st = sim.bind.get(el);
+  return st && st.last != null ? st.last / 10 : (Number(el.bind?.angle_start) || 0) / 10;
+}
+function simBarValue(el) {
+  const st = sim.bind.get(el);
+  return st && st.last != null ? st.last : (Number(el.bind?.in_min) || 0);
+}
+function simVisible(el) {
+  const b = el.bind || {};
+  let show = (sim.ch[b.channel] ?? 0) !== 0;
+  if (b.invert) show = !show;
+  return show;
+}
+
+/* One 40 Hz pass of the dash: inputs -> channels -> bindings. */
+function simTick() {
+  const inp = sim.input;
+  const ch = sim.ch;
+
+  /* RPM smoothing lives in the main loop, before the layout. */
+  const target = inp.rpm || 0;
+  const d = target - (sim.rpmDisp || 0);
+  sim.rpmDisp = (d > -1 && d < 1) ? target : (sim.rpmDisp || 0) + 0.25 * d;
+  ch.rpm = Math.round(sim.rpmDisp);
+
+  /* Channels in layout units, as fg_channels_update produces them. */
+  ch.speed = Math.round((inp.speed || 0) * 10);
+  for (const k of ["neutral", "oil", "brights", "gas", "engine"]) ch[k] = inp[k] ? 1 : 0;
+  const phase = Math.floor(sim.flashT / FLASH_HALF_MS) % 2 === 0;
+  ch.blinker_l = (sim.flash.blinker_l ? phase : !!inp.blinker_l) ? 1 : 0;
+  ch.blinker_r = (sim.flash.blinker_r ? phase : !!inp.blinker_r) ? 1 : 0;
+  ch.odometer = Math.round((inp.odometer || 0) * 10);
+  ch.trip = Math.round((inp.trip || 0) * 10);
+  ch.oil_temp_ok = inp.oil_temp_ok ? 1 : 0;
+  ch.coolant_temp_ok = inp.coolant_temp_ok ? 1 : 0;
+  ch.oil_temp = ch.oil_temp_ok ? Math.round(inp.oil_temp || 0) : 0;
+  ch.coolant_temp = ch.coolant_temp_ok ? Math.round(inp.coolant_temp || 0) : 0;
+  let minutes = inp.clock;
+  if (sim.clockNow) { const n = new Date(); minutes = n.getHours() * 60 + n.getMinutes(); }
+  ch.clock = minutes == null ? -1 : minutes;
+  if (ch.clock < 0) { ch.clock_h = -1; ch.clock_m = 0; ch.clock_pm = 0; }
+  else {
+    let h = Math.floor(ch.clock / 60);
+    ch.clock_m = ch.clock % 60;
+    ch.clock_pm = h >= 12 ? 1 : 0;
+    if (docUnits().clock === "12h") { h %= 12; if (h === 0) h = 12; }
+    ch.clock_h = h;
+  }
+
+  /* Bindings. */
+  for (const el of state.doc?.elements || []) {
+    const b = el.bind;
+    if (!b || b.kind === "visible") continue;
+    if (el.type !== "needle" && el.type !== "bar") continue;
+    let st = sim.bind.get(el);
+    if (!st) { st = { filt: null, last: null }; sim.bind.set(el, st); }
+    const v = ch[b.channel] ?? 0;
+
+    if (el.type === "needle") {
+      const p = rotParams(b);
+      const sp = p.sweep ? sweepPos(p.sweepMs) : null;
+      if (sp != null) {                     /* lv_anim owns the needle */
+        st.last = Math.round(p.a0 + sp * p.sw);
+        st.sweeping = true;
+        continue;
+      }
+      if (st.sweeping) { st.sweeping = false; st.filt = p.lo; st.last = null; }
+      st.filt = (p.alpha > 0 && st.filt != null) ? st.filt + p.alpha * (v - st.filt) : v;
+      const c = Math.min(p.hi, Math.max(p.lo, st.filt));
+      const frac = p.hi > p.lo ? (c - p.lo) / (p.hi - p.lo) : 0;
+      const angle = Math.trunc(p.a0 + frac * p.sw);
+      if (st.last == null || Math.abs(angle - st.last) >= p.db) st.last = angle;
+    } else {
+      const p = barParams(b);
+      const sp = p.sweep ? sweepPos(p.sweepMs) : null;
+      if (sp != null) {
+        st.last = Math.round(p.lo + sp * (p.hi - p.lo));
+        st.sweeping = true;
+        continue;
+      }
+      if (st.sweeping) { st.sweeping = false; st.filt = p.lo; st.last = null; }
+      st.filt = (p.alpha > 0 && st.filt != null) ? st.filt + p.alpha * (v - st.filt) : v;
+      const val = Math.min(p.hi, Math.max(p.lo, Math.trunc(st.filt)));
+      if (st.last == null || Math.abs(val - st.last) > p.db) st.last = val;
+    }
+  }
+}
+
+/* ---- scenarios: scripted inputs, in real units (mph, deg C) ---- */
+const GEAR_MPH_PER_KRPM = [5.2, 7.6, 9.6, 11.2, 12.5, 13.6];
+function rpmFor(mph, upshift) {
+  if (mph < 0.5) return 1200;
+  /* Upshift at 8500, downshift below 3000: the lowest/highest gear that fits. */
+  let g;
+  if (upshift) { g = GEAR_MPH_PER_KRPM.findIndex(r => mph / r * 1000 <= 8500); if (g < 0) g = 5; }
+  else { g = 5; while (g > 0 && mph / GEAR_MPH_PER_KRPM[g] * 1000 < 3000) g--; }
+  return Math.max(1200, Math.round(mph / GEAR_MPH_PER_KRPM[g] * 1000));
+}
+
+const SCENARIOS = {
+  ride: {
+    label: "Ride",
+    length: 32000,
+    step(t, inp) {
+      const s = t / 1000;
+      let mph = 0, up = true;
+      if (s < 2) mph = 0;
+      else if (s < 13) mph = 78 * easeInOut((s - 2) / 11);
+      else if (s < 21) mph = 78 + 2 * Math.sin((s - 13) * 1.3);
+      else if (s < 28) { mph = 78 * (1 - easeInOut((s - 21) / 7)); up = false; }
+      else mph = 0;
+      inp.speed = mphToLayout(mph);
+      inp.rpm = rpmFor(mph, up) + (mph > 0 ? Math.round(80 * Math.sin(s * 9)) : Math.round(40 * Math.sin(s * 3)));
+      inp.neutral = mph < 0.5 && (s < 2.2 || s > 28);
+      sim.flash.blinker_l = s >= 1.2 && s < 4;
+      sim.flash.blinker_r = s >= 20 && s < 23.5;
+      inp.brights = s >= 14 && s < 19;
+      /* Distance: integrate the speed that's actually shown. */
+      const dist = (inp.speed || 0) / 3600 * (SIM_TICK_MS / 1000);
+      inp.odometer = (inp.odometer || 0) + dist;
+      inp.trip = (inp.trip || 0) + dist;
+    },
+  },
+  warm: {
+    label: "Warm-up",
+    length: 24000,
+    step(t, inp) {
+      const s = t / 1000;
+      inp.neutral = true; inp.speed = 0;
+      inp.rpm = Math.round(1100 + 500 * Math.exp(-s / 6) + 30 * Math.sin(s * 4));
+      inp.oil_temp_ok = true;
+      inp.oil_temp = Math.round(cToLayout(18 + 87 * (1 - Math.exp(-s / 7))));
+      if (inp.coolant_temp_ok) inp.coolant_temp = Math.round(cToLayout(18 + 72 * (1 - Math.exp(-s / 5))));
+    },
+  },
+};
+
+function simStartScenario(name) {
+  sim.scenario = name; sim.t = 0; sim.paused = false;
+  if (name === "ride") { sim.input.gas = false; sim.input.oil = false; sim.input.engine = false; }
+  simSyncButtons();
+}
+function simStopScenario() {
+  sim.scenario = null; sim.flash.blinker_l = sim.flash.blinker_r = false;
+  simSyncButtons(); simRenderControls();
+}
+
+/* Key on: every warning lamp lit for a moment (the usual bulb check) while
+ * the startup sweep runs, then back to what the controls say. */
+function simKeyOn() {
+  sim.bind.clear();
+  sim.rpmDisp = 0;
+  sim.sweepT = 0;
+  sim.bulbCheck = 1500;
+  simStopScenario();
+}
+
+function simFrame(ts) {
+  if (!sim.on) return;
+  if (!sim.lastTs) sim.lastTs = ts;
+  sim.acc += Math.min(250, ts - sim.lastTs);
+  sim.lastTs = ts;
+  while (sim.acc >= SIM_TICK_MS) {
+    sim.acc -= SIM_TICK_MS;
+    if (!sim.paused) {
+      sim.flashT = (sim.flashT || 0) + SIM_TICK_MS;
+      if (sim.sweepT != null) { sim.sweepT += SIM_TICK_MS; if (sim.sweepT > 20000) sim.sweepT = null; }
+      if (sim.scenario) {
+        const sc = SCENARIOS[sim.scenario];
+        sim.t += SIM_TICK_MS;
+        if (sim.t >= sc.length) { sim.t = 0; if (sim.scenario === "ride") { /* loop */ } }
+        sc.step(sim.t, sim.input);
+      }
+      if (sim.bulbCheck > 0) sim.bulbCheck -= SIM_TICK_MS;
+    }
+    const saved = {};
+    if (sim.bulbCheck > 0) for (const k of ["oil", "gas", "engine", "neutral"]) { saved[k] = sim.input[k]; sim.input[k] = true; }
+    simTick();
+    if (sim.bulbCheck > 0) Object.assign(sim.input, saved);
+  }
+  drawPreview();
+  if (++sim.uiTick % 6 === 0) simRefreshReadouts();
+  sim.raf = requestAnimationFrame(simFrame);
+}
+
+/* ---- controls ---- */
+function simUnitLabel(kind) {
+  if (kind === "speed") return kph() ? "km/h" : "mph";
+  if (kind === "distance") return kph() ? "km" : "mi";
+  if (kind === "temp") return degC() ? "°C" : "°F";
+  return "";
+}
+
+function simSlider(host, key, label, min, max, step, unit, used) {
+  const row = document.createElement("div");
+  row.className = "sim-row" + (used ? "" : " unused");
+  row.title = used ? "" : "This layout doesn't use this channel";
+  const lab = document.createElement("label"); lab.textContent = label;
+  const inp = document.createElement("input");
+  inp.type = "range"; inp.min = min; inp.max = max; inp.step = step;
+  inp.value = sim.input[key] ?? min;
+  inp.dataset.key = key;
+  const out = document.createElement("output");
+  const show = () => { out.textContent = `${Math.round(Number(sim.input[key] ?? 0))}${unit ? " " + unit : ""}`; };
+  inp.oninput = () => {
+    if (sim.scenario) { simStopScenario(); }
+    sim.input[key] = Number(inp.value); show();
+  };
+  show();
+  row.append(lab, inp, out);
+  host.appendChild(row);
+  return { inp, show };
+}
+
+function simNumber(host, key, label, unit, used) {
+  const row = document.createElement("div");
+  row.className = "sim-row" + (used ? "" : " unused");
+  const lab = document.createElement("label"); lab.textContent = label;
+  const inp = document.createElement("input");
+  inp.type = "number"; inp.step = "0.1"; inp.min = "0";
+  inp.value = (sim.input[key] ?? 0).toFixed(1);
+  inp.dataset.key = key;
+  inp.onchange = () => { sim.input[key] = Math.max(0, Number(inp.value) || 0); };
+  const out = document.createElement("output"); out.textContent = unit;
+  row.append(lab, inp, out);
+  host.appendChild(row);
+}
+
+function simLamp(host, key, label, used, flashable) {
+  const b = document.createElement("div");
+  b.className = "lamp" + (used ? "" : " unused");
+  b.dataset.key = key;
+  b.innerHTML = `<span class="dot"></span><span style="flex:1;white-space:nowrap">${label}</span>`;
+  if (flashable) {
+    const sel = document.createElement("select");
+    sel.innerHTML = `<option value="off">off</option><option value="on">on</option><option value="flash">flash</option>`;
+    sel.value = sim.flash[key] ? "flash" : (sim.input[key] ? "on" : "off");
+    sel.onclick = e => e.stopPropagation();
+    sel.onchange = () => {
+      if (sim.scenario) simStopScenario();
+      sim.flash[key] = sel.value === "flash";
+      sim.input[key] = sel.value === "on";
+    };
+    b.appendChild(sel);
+  } else {
+    b.onclick = () => {
+      if (sim.scenario) simStopScenario();
+      sim.input[key] = !sim.input[key];
+    };
+  }
+  host.appendChild(b);
+}
+
+function simRenderControls() {
+  const used = usedChannels();
+  const rpmMax = Math.max(12000, ...(state.doc?.elements || [])
+    .filter(e => e.bind && e.bind.channel === "rpm" && e.bind.kind !== "visible")
+    .map(e => Number(e.bind.in_max) || 0));
+  const speedMax = kph() ? 320 : 200;
+
+  const v = $("simValues"); v.innerHTML = "";
+  simSlider(v, "rpm", "RPM", 0, rpmMax, 50, "", used.has("rpm"));
+  simSlider(v, "speed", "Speed", 0, speedMax, 1, simUnitLabel("speed"), used.has("speed"));
+
+  const L = $("simLamps"); L.innerHTML = "";
+  simLamp(L, "blinker_l", "Left blinker", used.has("blinker_l"), true);
+  simLamp(L, "blinker_r", "Right blinker", used.has("blinker_r"), true);
+  for (const [k, lab] of [["neutral", "Neutral"], ["brights", "High beam"], ["gas", "Low fuel"],
+                          ["oil", "Oil pressure"], ["engine", "Check engine"],
+                          ["oil_temp_ok", "Oil temp sender"], ["coolant_temp_ok", "Coolant sender"]])
+    simLamp(L, k, lab, used.has(k), false);
+
+  const m = $("simMore"); m.innerHTML = "";
+  simNumber(m, "odometer", "Odometer", simUnitLabel("distance"), used.has("odometer"));
+  simNumber(m, "trip", "Trip", simUnitLabel("distance"), used.has("trip"));
+  const tMin = degC() ? -20 : 0, tMax = degC() ? 150 : 300;
+  simSlider(m, "oil_temp", "Oil temp", tMin, tMax, 1, simUnitLabel("temp"), used.has("oil_temp"));
+  simSlider(m, "coolant_temp", "Coolant temp", tMin, tMax, 1, simUnitLabel("temp"), used.has("coolant_temp"));
+
+  const crow = document.createElement("div");
+  crow.className = "sim-row" + (used.has("clock") ? "" : " unused");
+  crow.innerHTML = `<label>Clock</label>`;
+  const cs = document.createElement("input");
+  cs.type = "range"; cs.min = -1; cs.max = 1439; cs.step = 1;
+  const now = new Date();
+  cs.value = sim.clockNow ? now.getHours() * 60 + now.getMinutes() : (sim.input.clock ?? -1);
+  const cout = document.createElement("output");
+  const showClock = () => {
+    const mins = sim.clockNow ? null : sim.input.clock;
+    cout.textContent = sim.clockNow ? "now" : (mins == null || mins < 0 ? "not set" :
+      `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`);
+  };
+  cs.oninput = () => { sim.clockNow = false; sim.input.clock = Number(cs.value) < 0 ? null : Number(cs.value); showClock(); };
+  crow.append(cs, cout);
+  m.appendChild(crow);
+  const nowBtn = document.createElement("button");
+  nowBtn.textContent = "Use this computer's clock";
+  nowBtn.style.cssText = "margin-top:10px;font-size:12px;padding:4px 10px";
+  nowBtn.onclick = () => { sim.clockNow = true; showClock(); };
+  m.appendChild(nowBtn);
+  showClock();
+
+  simRefreshReadouts();
+}
+
+/* Keep sliders and lamps in step with a running scenario. */
+function simRefreshReadouts() {
+  document.querySelectorAll("#paneSim input[type=range][data-key]").forEach(inp => {
+    const k = inp.dataset.key;
+    if (document.activeElement !== inp && sim.input[k] != null) inp.value = sim.input[k];
+    const out = inp.parentElement.querySelector("output");
+    const unit = out.textContent.replace(/^[-\d.]+\s?/, "");
+    out.textContent = `${Math.round(Number(sim.input[k] ?? 0))}${unit ? " " + unit : ""}`;
+  });
+  document.querySelectorAll("#paneSim input[type=number][data-key]").forEach(inp => {
+    if (document.activeElement !== inp) inp.value = (sim.input[inp.dataset.key] ?? 0).toFixed(1);
+  });
+  document.querySelectorAll("#simLamps .lamp").forEach(l => {
+    l.classList.toggle("lit", (sim.ch[l.dataset.key] ?? 0) !== 0);
+    const sel = l.querySelector("select");
+    if (sel && document.activeElement !== sel) {
+      const k = l.dataset.key;
+      sel.value = sim.flash[k] ? "flash" : (sim.input[k] ? "on" : "off");
+    }
+  });
+  const st = sim.scenario ? `${SCENARIOS[sim.scenario].label} ${(sim.t / 1000).toFixed(1)} s`
+           : (sim.sweepT != null ? "key on" : "manual");
+  $("simStatus").textContent = (sim.paused ? "paused · " : "") + st;
+}
+
+function simSyncButtons() {
+  $("simRide").classList.toggle("on", sim.scenario === "ride");
+  $("simWarm").classList.toggle("on", sim.scenario === "warm");
+  $("simPause").textContent = sim.paused ? "Resume" : "Pause";
+}
+
+/* Defaults when the tab opens: the sample values, converted into what a
+ * person would set (mph, degrees), plus a key-on. */
+function simReset() {
+  const s = SAMPLE;
+  sim.input = {
+    rpm: 0, speed: 0, neutral: true, blinker_l: false, blinker_r: false,
+    brights: false, gas: false, oil: false, engine: false,
+    odometer: (s.odometer || 0) / 10, trip: (s.trip || 0) / 10,
+    oil_temp: Math.round(cToLayout(20)), coolant_temp: Math.round(cToLayout(20)),
+    oil_temp_ok: true, coolant_temp_ok: false, clock: null,
+  };
+  sim.flash = { blinker_l: false, blinker_r: false };
+  sim.clockNow = true;
+}
+
+function simEnter() {
+  if (!state.doc) {
+    say("simNote", "Load or start a layout on the Build tab first.", true);
+  } else {
+    $("simNote").classList.add("hidden");
+    const needles = (state.doc.elements || []).filter(e => e.type === "needle").length;
+    const missing = (state.doc.elements || []).filter(e => (e.type === "image" || e.type === "needle") &&
+      e.src && !assetCanvas(assetPathFor(e.src))).map(e => e.src);
+    if (missing.length)
+      say("simNote", `Artwork not in this layout yet, shown as placeholders: ${[...new Set(missing)].join(", ")}.`);
+    else if (!needles && !(state.doc.elements || []).some(e => e.bind))
+      say("simNote", "Nothing in this layout reacts to a channel yet, so there's nothing to animate.");
+  }
+  sim.on = true;
+  state.selected = null; state.testAngle = null;
+  renderElementPanel();
+  if (!sim.input || sim.input.rpm == null) simReset();
+  simRenderControls();
+  simKeyOn();
+  wrap.classList.add("simulating");
+  sim.lastTs = 0; sim.acc = 0;
+  cancelAnimationFrame(sim.raf);
+  sim.raf = requestAnimationFrame(simFrame);
+}
+
+function simLeave() {
+  sim.on = false;
+  cancelAnimationFrame(sim.raf);
+  wrap.classList.remove("simulating");
+  drawPreview();
+}
+
+function showTab(which) {
+  const simTab = which === "sim";
+  $("tabBtnBuild").setAttribute("aria-selected", String(!simTab));
+  $("tabBtnSim").setAttribute("aria-selected", String(simTab));
+  $("paneBuild").hidden = simTab;
+  $("paneSim").hidden = !simTab;
+  if (simTab && !sim.on) simEnter();
+  if (!simTab && sim.on) simLeave();
+}
+$("tabBtnBuild").onclick = () => showTab("build");
+$("tabBtnSim").onclick = () => showTab("sim");
+$("simKey").onclick = () => simKeyOn();
+$("simRide").onclick = () => (sim.scenario === "ride" ? simStopScenario() : simStartScenario("ride"));
+$("simWarm").onclick = () => (sim.scenario === "warm" ? simStopScenario() : simStartScenario("warm"));
+$("simPause").onclick = () => { sim.paused = !sim.paused; simSyncButtons(); };
+/* Units changed on the Build tab: controls follow on the next visit. */
+
+/* ------------------------------------------------------ drag & drop ---- */
+document.addEventListener("dragover", e => { e.preventDefault(); document.body.classList.add("drop-hot"); });
+document.addEventListener("dragleave", e => { if (e.relatedTarget === null) document.body.classList.remove("drop-hot"); });
+document.addEventListener("drop", async e => {
+  e.preventDefault();
+  document.body.classList.remove("drop-hot");
+  // Route by type: JSON -> layout, image -> background, anything else -> asset
+  for (const f of e.dataTransfer.files) {
+    if (/\.fglayout$/i.test(f.name)) {
+      try {
+        await importFgl(await readBytes(f), f.name);
+      } catch (err) {
+        say("layoutStatus", `${f.name} couldn't be opened: ${err.message}`, true);
+      }
+    } else if (/\.json$/i.test(f.name)) {
+      try {
+        const doc = JSON.parse(await f.text());
+        if (looksLikeVehicle(doc)) {           // vehicle.json -> its own panel
+          vehLoad(doc, f.name, `Loaded ${f.name}.`);
+          $("vehicleBlock").scrollIntoView({ behavior: "smooth", block: "start" });
+          continue;
+        }
+        state.doc = doc;
+        const L = doc.layout || {};
+        state.id = L.id || uuid4();
+        state.revision = Number(L.revision) || 0;
+        state.name = L.name || f.name.replace(/\.json$/i, "");
+        state.selected = null;
+        state.testAngle = null;
+        renderIdentity();
+        renderElementPanel();
+        renderAssets();
+        say("layoutStatus", `Loaded ${f.name}.`);
+      } catch { say("layoutStatus", `${f.name} isn't valid JSON.`, true); }
+    } else if (f.type.startsWith("image/")) {
+      const img = new Image();
+      img.onload = () => {
+        state.img = img; state.zoom = 1; state.offX = 0; state.offY = 0;
+        $("zoom").value = 100; $("zoomOut").textContent = "1.00×";
+        $("btnAddBg").disabled = false; $("btnClearImage").disabled = false;
+        drawPreview();
+      };
+      img.src = URL.createObjectURL(f);
+    } else {
+      await addFile(f);
+      renderAssets();
+    }
+  }
+});
+
+drawPreview();
+renderAssets();
+renderIdentity();
+renderElementList();
+</script>
+
+<script>
+/* GitHub Pages integration: allow the gallery to open a hosted .fglayout
+   directly with /configurator/?layout=/layouts/example.fglayout */
+window.addEventListener("DOMContentLoaded", async () => {
+  const url = new URL(window.location.href);
+  const layoutUrl = url.searchParams.get("layout");
+  if (!layoutUrl) return;
+  try {
+    const r = await fetch(layoutUrl, { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    const name = decodeURIComponent(layoutUrl.split("/").pop() || "layout.fglayout");
+    await importFgl(bytes, name);
+    const target = document.getElementById("layoutBlock");
+    if (target) target.scrollIntoView({ block: "start" });
+  } catch (err) {
+    const box = document.getElementById("layoutStatus");
+    if (box) {
+      box.classList.remove("hidden");
+      box.classList.add("bad");
+      box.textContent = `Could not open the hosted layout: ${err.message}`;
+    }
+  }
+});
+</script>
+</body>
+</html>
