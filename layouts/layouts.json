@@ -1,11 +1,11 @@
 {
   "layouts": [
     {
-      "file": "bargraphs.fglayout",
-      "title": "Bar Graphs",
+      "file": "retro-1.fglayout",
+      "title": "Retro Rev 1",
       "author": "FlashGauge",
-      "description": "Bar graph based FlashGauge layout"
-    },
+      "description": "Retro layout"
+    },    
     {
       "file": "dash-rev3 (1).fglayout",
       "title": "Dash Rev 3",
@@ -23,6 +23,12 @@
       "title": "Untitled Layout Rev 7",
       "author": "FlashGauge",
       "description": "FlashGauge layout, revision 7"
+    },
+    {
+      "file": "bargraphs.fglayout",
+      "title": "Bar Graphs",
+      "author": "FlashGauge",
+      "description": "Bar graph based FlashGauge layout"
     }
   ]
 }
