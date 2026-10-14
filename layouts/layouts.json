@@ -19,7 +19,7 @@
       "description": "FlashGauge layout, Speedometer focus"
     },
     {
-      "file": "bargraphs.fglayout",
+      "file": "solidbars.fglayout",
       "title": "Bar Graphs",
       "author": "FlashGauge",
       "description": "Bar graph based FlashGauge layout"
