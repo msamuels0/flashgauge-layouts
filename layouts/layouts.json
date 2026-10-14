@@ -23,6 +23,12 @@
       "title": "Bar Graphs",
       "author": "FlashGauge",
       "description": "Bar graph based FlashGauge layout"
+    },
+    {
+      "file": "untitled-layout-rev7.fglayout",
+      "title": "Dual Neeles",
+      "author": "FlashGauge",
+      "description": "Two Gauges FlashGauge layout"
     }
   ]
 }
