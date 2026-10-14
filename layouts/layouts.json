@@ -13,18 +13,6 @@
       "description": "FlashGauge dashboard layout, revision 4"
     },
     {
-      "file": "dash-rev5 white.fglayout",
-      "title": "Dash Rev 5",
-      "author": "FlashGauge",
-      "description": "FlashGauge dashboard layout, white"
-    },
-    {
-      "file": "dash-rev6 black.fglayout",
-      "title": "Dash Rev 6",
-      "author": "FlashGauge",
-      "description": "FlashGauge dashboard layout, black"
-    },
-    {
       "file": "dash-rev7 speedometer.fglayout",
       "title": "Dash Rev 7",
       "author": "FlashGauge",
