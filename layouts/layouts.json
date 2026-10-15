@@ -8,13 +8,13 @@
     },    
     {
       "file": "dash-rev4.fglayout",
-      "title": "Dash Rev 4",
+      "title": "S2R tachometer",
       "author": "FlashGauge",
-      "description": "FlashGauge dashboard layout, revision 4"
+      "description": "FlashGauge dashboard layout, S2R tachometer"
     },
     {
       "file": "dash-rev7 speedometer.fglayout",
-      "title": "Dash Rev 7",
+      "title": "S2R speedometer",
       "author": "FlashGauge",
       "description": "FlashGauge layout, Speedometer focus"
     },
