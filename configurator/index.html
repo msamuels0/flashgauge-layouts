@@ -4963,6 +4963,16 @@ window.addEventListener("DOMContentLoaded", async () => {
     const bytes = new Uint8Array(await response.arrayBuffer());
     const name = decodeURIComponent(url.pathname.split("/").pop() || "layout.fglayout");
     await importFgl(bytes, name);
+
+    // Track successfully opened gallery layouts
+    if (typeof gtag === 'function') {
+      gtag('event', 'configurator_open', {
+        layout_name: state.name,
+        layout_file: name,
+        layout_source: 'gallery'
+      });
+    }
+
     const target = document.getElementById("layoutBlock");
     if (target) target.scrollIntoView({ block: "start" });
   } catch (err) {
