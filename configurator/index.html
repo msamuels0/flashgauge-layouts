@@ -379,6 +379,42 @@
   .fchip .finfo { color: var(--dim); }
   .fchip button { padding: 2px 9px; font-size: 12px; }
   input.fsize { width: 90px; }
+
+  /* ---- help ---- */
+  header .help-btn { margin-left: auto; padding: 6px 14px; font-size: 13px; }
+  dialog#helpDlg {
+    width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
+    padding: 0; border: 1px solid var(--hairline); border-radius: 6px;
+    background: var(--panel); color: var(--lit); font-family: var(--ui);
+    box-shadow: 0 24px 60px rgba(0,0,0,.6);
+  }
+  dialog#helpDlg[open] { display: flex; flex-direction: column; }
+  dialog#helpDlg::backdrop { background: rgba(8,10,12,.7); }
+  .help-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 22px; border-bottom: 1px solid var(--hairline); flex: none;
+  }
+  .help-head h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .03em; }
+  .help-head button { padding: 5px 14px; font-size: 13px; }
+  .help-body { overflow-y: auto; padding: 6px 22px 24px; font-size: 14px; line-height: 1.55; }
+  .help-body h3 {
+    font-size: 15px; font-weight: 600; color: var(--amber); letter-spacing: .02em;
+    margin: 26px 0 8px; scroll-margin-top: 12px;
+  }
+  .help-body p { margin: 8px 0; color: var(--lit); max-width: 68ch; }
+  .help-body ul, .help-body ol { margin: 8px 0; padding-left: 22px; max-width: 68ch; }
+  .help-body li { margin: 5px 0; }
+  .help-body li ul { margin-top: 6px; }
+  .help-body b { font-weight: 600; }
+  .help-body i { font-style: normal; color: var(--amber); }
+  .help-body code { font-family: var(--mono); font-size: 12.5px; }
+  .help-toc { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 12px 0 4px; font-size: 13px; }
+  .help-toc a { color: var(--dim); text-decoration: none; }
+  .help-toc a:hover { color: var(--amber); }
+  table.help-table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 12px 0; }
+  table.help-table th { text-align: left; font-weight: 500; color: var(--dim); font-size: 12px;
+    padding: 0 12px 6px 0; border-bottom: 1px solid var(--hairline); }
+  table.help-table td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--hairline); vertical-align: top; }
 </style>
 </head>
 <body>
@@ -388,8 +424,8 @@
   <div class="ident">
     <span id="identName">no layout loaded</span>
     &nbsp; rev <b id="identRev">—</b>
-    &nbsp; <span id="identId">—</span>
   </div>
+  <button class="help-btn" id="btnHelp" title="How to use the layout studio">Help</button>
 </header>
 
 <main>
@@ -468,31 +504,38 @@
 
     <section class="block" id="layoutBlock">
       <h2>Start from a layout</h2>
-      <p class="hint">Load a dash.json to keep working on it — everything it contains is
-        kept, even fields this tool doesn't edit — or start blank and build the whole
-        layout here.</p>
-      <div class="row">
-        <button id="btnLoadJson">Choose dash.json</button>
-        <button id="btnNewJson">Start a blank layout</button>
-      </div>
+      <p class="hint">Open a .fglayout to change a layout you already have, or start a blank
+        one and build it here.</p>
       <div class="row">
         <button id="btnImportFgl">Open a .fglayout</button>
-        <button id="btnRemix" disabled>Remix as my own</button>
+        <button id="btnNewJson">Start a blank layout</button>
       </div>
-      <p class="hint">Opening a .fglayout unpacks it — the layout, its artwork and its
-        fonts — so you can change one thing and export it again. It keeps the original
-        layout's identity; use <em>Remix as my own</em> if you're publishing it as a
-        new layout rather than updating that one.</p>
       <div class="status hidden" id="layoutStatus"></div>
+      <div class="field"><label>Name</label>
+        <input type="text" id="layoutName" placeholder="Untitled layout" spellcheck="false"></div>
       <div class="subhead" style="margin-top:14px">Units</div>
-      <p class="hint">The dash converts every signal once, so speed, distance and
-        temperature labels and needle ranges are all in these units.</p>
+      <p class="hint">Speed, distance and temperature labels and needle ranges all use these.</p>
       <div class="field"><label>Speed &amp; distance</label>
         <select id="unitSpeed"><option value="mph">mph / miles</option><option value="kph">km/h / km</option></select></div>
       <div class="field"><label>Temperature</label>
         <select id="unitTemp"><option value="f">°F</option><option value="c">°C</option></select></div>
       <div class="field"><label>Clock</label>
         <select id="unitClock"><option value="12h">12-hour</option><option value="24h">24-hour</option></select></div>
+    </section>
+
+    <section class="block" id="bgBlock">
+      <h2>Background</h2>
+      <p class="hint">Choose a photo, then drag it on the dial to move it and scroll or use the
+        slider to zoom. Only what falls inside the circle shows on the dash.</p>
+      <div class="row">
+        <button id="btnLoadImage">Choose a photo</button>
+        <button id="btnClearImage" disabled>Remove</button>
+      </div>
+      <label class="slider">Zoom
+        <input type="range" id="zoom" min="100" max="400" value="100" disabled>
+        <output id="zoomOut">1.00×</output>
+      </label>
+      <div class="status hidden" id="bgStatus"></div>
     </section>
 
     <section class="block" id="elementsBlock">
@@ -513,99 +556,23 @@
       <div class="status hidden" id="elementStatus"></div>
     </section>
 
-    <section class="block">
-      <h2>Background</h2>
-      <p class="hint">Drag to move, scroll or use the slider to zoom. Only what falls inside
-        the circle is visible on the dash, so frame it against the round edge.</p>
-      <div class="row">
-        <button id="btnLoadImage">Choose a photo</button>
-        <button id="btnClearImage" disabled>Remove</button>
-      </div>
-
-      <label class="slider">Zoom
-        <input type="range" id="zoom" min="100" max="400" value="100">
-        <output id="zoomOut">1.00×</output>
-      </label>
-
-      <label class="check">
-        <input type="checkbox" id="dither" checked>
-        <span><b>Smooth colour banding</b>
-          The dash stores 16-bit colour. Dithering hides the steps that photos of skies
-          and gradients otherwise show.</span>
-      </label>
-
-      <label class="check">
-        <input type="checkbox" id="bgJpeg" checked>
-        <span><b>Send background as JPEG</b>
-          Sends the background compressed and lets the dash expand it, so the transfer is
-          a few seconds instead of nearly a minute. The dash still stores full-quality
-          16-bit colour. Turn off only if a background looks wrong after install.</span>
-      </label>
-
-      <label class="slider" id="bgQualityRow">Quality
-        <input type="range" id="bgQuality" min="60" max="95" value="85">
-        <output id="bgQualityOut">85</output>
-      </label>
-
-      <div class="row" style="margin-top:14px">
-        <input type="text" id="bgPath" value="img/gauge_bg_720.bin" aria-label="File path on the dash">
-        <button id="btnAddBg" disabled>Add to layout</button>
-      </div>
+    <section class="block" id="elementBlock" style="display:none">
+      <h2>Selected element</h2>
+      <p class="hint">Positions are offsets from the centre of the screen. What an element
+        shows on the dash is set under “Reacts to”.</p>
+      <div id="elementFields"></div>
     </section>
 
     <section class="block" id="fontsBlock">
       <h2>Fonts</h2>
-      <p class="hint">Add a TrueType or OpenType font, then the sizes you want. Each size
-        becomes its own font file on the dash, holding only the characters its labels can
-        show, so a big speedo font stays small. Use one by typing its name into a label's
-        Font field; the files rebuild themselves as you change those labels.</p>
+      <p class="hint">Two fonts are built in (montserrat_42 and montserrat_48). To use another,
+        add a TrueType or OpenType file and the sizes you want, then pick one in a label's
+        Font field. Each size only carries the characters its labels show, so it stays small.</p>
       <div class="row">
         <button id="btnAddFont">Choose a font file</button>
       </div>
       <div id="fontCards"></div>
       <div class="status hidden" id="fontStatus"></div>
-    </section>
-
-    <section class="block" id="elementBlock" style="display:none">
-      <h2>Selected element</h2>
-      <p class="hint">Coordinates are offsets from the centre of the screen. What an element
-        shows on the dash is set under “Reacts to”.</p>
-      <div id="elementFields"></div>
-    </section>
-
-    <section class="block" id="needsBlock" style="display:none">
-      <h2>What this layout needs</h2>
-      <p class="hint">Taken from the artwork and fonts the elements name. Anything the
-        firmware has built in is already covered; the rest has to be installed, or the
-        dash falls back to its built-in layout.</p>
-      <div class="naming">
-        Elements find their artwork at
-        <input type="text" id="namingDir" value="img/" size="5" aria-label="Folder">
-        <span>&lt;name&gt;</span>
-        <input type="text" id="namingExt" value=".bin" size="5" aria-label="Extension">
-        <button id="btnRepath" title="Move added files onto these paths">Re-match files</button>
-      </div>
-      <table class="assets">
-        <tbody id="needRows"></tbody>
-      </table>
-    </section>
-
-    <section class="block">
-      <h2>Files in this layout</h2>
-      <p class="hint">Converted artwork, built fonts, and anything else the layout needs.
-        Pre-built .bin images and fonts can be dropped straight in; a .ttf or .otf goes to
-        Fonts.</p>
-      <table class="assets">
-        <thead>
-          <tr><th>Path on the dash</th><th style="text-align:right">Size</th><th></th></tr>
-        </thead>
-        <tbody id="assetRows">
-          <tr><td colspan="3" class="empty-row">Nothing added yet.</td></tr>
-        </tbody>
-      </table>
-      <div class="row" style="margin-top:14px">
-        <button id="btnAddFile">Add an existing file</button>
-      </div>
     </section>
 
     <section class="block">
@@ -615,23 +582,15 @@
       <div class="row">
         <button class="primary" id="btnExport" disabled>Export layout</button>
       </div>
-      <details class="tool">
-        <summary>Export as separate files instead</summary>
-        <div class="body">
-          <p class="hint">For working over the wire with ftp1_send.py, or updating a single
-            asset by hand.</p>
-          <div class="row"><button id="btnExportLoose">Export loose files</button></div>
-        </div>
-      </details>
       <div class="status hidden" id="exportStatus"></div>
-
-      <details class="tool">
-        <summary>Check a .bin file's header</summary>
+      <details class="tool" style="margin-top:12px">
+        <summary id="filesSummary">What's in it</summary>
         <div class="body">
-          <p class="hint">Drop a working image file here to read its header. Use it to confirm
-            this tool writes the same format your firmware already loads.</p>
-          <div class="row"><button id="btnInspect">Choose a .bin file</button></div>
-          <pre class="readout" id="inspectOut">No file checked yet.</pre>
+          <table class="assets">
+            <tbody id="assetRows">
+              <tr><td colspan="3" class="empty-row">Nothing added yet.</td></tr>
+            </tbody>
+          </table>
         </div>
       </details>
     </section>
@@ -682,12 +641,199 @@
   </div>
 </main>
 
+<dialog id="helpDlg" aria-labelledby="helpTitle">
+  <div class="help-head">
+    <h2 id="helpTitle">Quick guide</h2>
+    <button id="helpClose" aria-label="Close the guide">Close</button>
+  </div>
+  <div class="help-body">
+    <nav class="help-toc">
+      <a href="#help-overview">Overview</a>
+      <a href="#help-strategy">Best strategy</a>
+      <a href="#help-build">Build tab</a>
+      <a href="#help-sim">Simulate tab</a>
+      <a href="#help-install">Installing</a>
+      <a href="#help-limits">Limits &amp; tips</a>
+    </nav>
+
+    <h3 id="help-overview">Overview</h3>
+    <p>The layout studio builds everything your FlashGauge shows and saves it as one
+      <code>.fglayout</code> file. It runs in your browser; nothing is uploaded anywhere.</p>
+    <ol>
+      <li><b>Build</b> the layout on the Build tab.</li>
+      <li><b>Simulate</b> it on the Simulate tab to check that it behaves the way you expect.</li>
+      <li><b>Export</b> one <code>.fglayout</code> file.</li>
+      <li><b>Install</b> it from the FlashGauge app's Update tab.</li>
+    </ol>
+    <p>The dial on the left is a true-size preview of the 720 × 720 round screen. Anything
+      outside the circle never shows on the dash. The gauge under the dial shows how much of the
+      dash's 4 MB layout space you're using and roughly how long the install will take.</p>
+
+    <h3 id="help-strategy">The best strategy: paint it into the background</h3>
+    <p>Anything that never changes belongs in the background photo, not in a separate element.
+      Make elements only for things that move, light up or show a changing number.</p>
+    <ul>
+      <li><b>The background costs the same however busy it is.</b> It's always one 720 × 720
+        image, about 1 MB on the dash, and it's sent compressed, so it installs in seconds. Tick
+        marks, numbers and logos painted into it are free.</li>
+      <li><b>Every element costs extra.</b> Images with transparency are stored and sent
+        uncompressed at 4 bytes per pixel: a 200 × 200 lamp is about 160 KB. Each one adds
+        install time and takes a share of the dash's 4 MB.</li>
+      <li><b>Elements slow redraws.</b> When a needle moves, the dash redraws everything it passes
+        over. Every static image or label stacked in that area is one more layer to redraw each
+        frame; painted into the background, it adds nothing.</li>
+      <li><b>There are hard limits.</b> A layout can hold 32 elements, 24 of which can react to
+        signals, and 8 custom font files.</li>
+    </ul>
+    <table class="help-table">
+      <thead><tr><th>Put it on the background</th><th>Make it an element</th></tr></thead>
+      <tbody>
+        <tr><td>Dial face, tick marks, scale numbers, redline</td><td>Needles</td></tr>
+        <tr><td>Words that never change ("RPM ×1000", "MPH", your logo)</td><td>Numbers that change (speed, gear, odometer, trip, clock, temperatures)</td></tr>
+        <tr><td>Rings, bezels, panels, frames behind readouts</td><td>Warning lamps that turn on and off</td></tr>
+        <tr><td>The dim "off" look of each warning lamp</td><td>Bars (fuel, temperature)</td></tr>
+      </tbody>
+    </table>
+    <p>Two tricks that save the most:</p>
+    <ul>
+      <li><b>Lamps:</b> paint the dark, unlit version of each lamp into the background. Then the
+        element is just the small lit version, set to show and hide. When it's off, the
+        background shows through.</li>
+      <li><b>Crop tightly:</b> trim lamp and needle images right to their edges before choosing
+        them. Every transparent pixel around the artwork is still stored and sent.</li>
+    </ul>
+    <p>To line things up, design the background in your image editor on a 720 × 720 canvas with
+      a circle drawn as a guide. The studio measures element positions from the centre, so a spot
+      at (500, 300) in your editor is X = 140, Y = −60 in the studio.</p>
+
+    <h3 id="help-build">Build tab</h3>
+    <p>Work down the page from top to bottom; each section feeds the next.</p>
+    <ol>
+      <li><b>Start from a layout.</b> Choose <i>Open a .fglayout</i> to change a layout you already
+        have, or <i>Start a blank layout</i>. Give it a name; the name becomes the export's file
+        name. Pick your units for speed and distance, temperature, and the clock. Every speed,
+        distance and temperature reading in the layout follows these.</li>
+      <li><b>Background.</b> Choose a photo. It goes into the layout straight away. Drag on the
+        dial to move it and scroll (or use the Zoom slider) to size it. It always covers the whole
+        screen, so you can't leave a black edge. <i>Remove</i> takes it out again.</li>
+      <li><b>Elements.</b> Add what needs to move or change: <i>Needle</i>, <i>Label</i>,
+        <i>Image</i>, <i>Bar</i> or <i>Shape</i>. Click an element on the dial or in the list to
+        select it. Drag it to place it, nudge it with the arrow keys (Shift moves 10), and press
+        Delete to remove it.</li>
+      <li><b>Selected element.</b> Set how the element looks and, under <i>Reacts to</i>, which
+        signal drives it:
+        <ul>
+          <li><b>Needle:</b> <i>Choose image</i> for your own needle (a narrow PNG with a
+            transparent background). Set <i>Pivot in image</i> to the pixel it turns around, then
+            set the start and end values and angles. Drag the <i>Test sweep</i> slider to watch
+            the tip trace your dial and check the pivot.</li>
+          <li><b>Label:</b> type the text, pick a font and colour, then choose <i>shows a
+            number</i> and a signal for live readouts. <i>Suffix</i> "auto" adds the unit (mph,
+            °F and so on). <i>Hide when off</i> hides the label while a flag is off, such as a
+            temperature with no sender fitted.</li>
+          <li><b>Image:</b> <i>Choose image</i> for a lamp or icon, then set <i>Behaviour</i> to
+            <i>shows / hides</i> and pick the lamp's signal.</li>
+          <li><b>Bar:</b> pick a signal and the values for empty and full.</li>
+          <li>Rarely needed fine-tuning (smoothing, deadband, paint order) is under <i>More
+            settings</i>.</li>
+        </ul></li>
+      <li><b>Fonts (optional).</b> Two fonts are built in: montserrat_42 and montserrat_48. For
+        another, choose a .ttf or .otf file and add the pixel sizes you want, then pick one in a
+        label's <i>Font</i> field. Each size only carries the characters its labels can show, so
+        keep to a few sizes.</li>
+      <li><b>Send it to the dash.</b> Press <i>Export layout</i>. If anything would stop the layout
+        working on the dash, the export is held back and the problem is listed. Each export raises
+        the revision number by one. <i>What's in it</i> lists every file and its size.</li>
+    </ol>
+
+    <h3 id="help-sim">Simulate tab</h3>
+    <p>Simulate plays your layout the way the dash will, before you install it. It uses the same
+      update rate, needle smoothing, startup sweep and label formatting as the dash, in your
+      layout's units. Nothing you do here is saved or exported, and the dial can't be edited until
+      you go back to Build.</p>
+    <p><b>Scripted runs</b> (the buttons at the top):</p>
+    <ul>
+      <li><b>Key on:</b> the needles do their startup sweep and the warning lamps light for a
+        moment, like a bulb check.</li>
+      <li><b>Ride:</b> about 30 seconds from a standstill up to highway speed and back, shifting
+        through the gears. It includes a left blinker pulling away, high beam while cruising, and a
+        right blinker before stopping. It repeats until you stop it.</li>
+      <li><b>Warm-up:</b> the engine idles while the oil temperature climbs.</li>
+      <li><b>Pause</b> freezes whatever is running; press it again to resume.</li>
+    </ul>
+    <p><b>Manual controls</b> (below the buttons):</p>
+    <ul>
+      <li><b>Engine &amp; road:</b> RPM and speed sliders.</li>
+      <li><b>Lamps:</b> click a lamp to switch it on or off. The blinkers can also be set to flash
+        at the dash's own rate.</li>
+      <li><b>Distance, temperature, clock:</b> type an odometer or trip value, slide the
+        temperatures, and set the clock (or use this computer's time).</li>
+    </ul>
+    <p>Touching any control stops a scripted run so you can take over. Controls shown faded aren't
+      used by your layout, so you can see at a glance which signals your layout reacts to.</p>
+    <p>What to check: needles reach the right marks at your redline and top speed, lamps sit over
+      their painted "off" icons, and numbers fit their space at their widest (for example 188.8
+      or 12:59 PM).</p>
+
+    <h3 id="help-install">Installing, and vehicle settings</h3>
+    <p>Move the exported <code>.fglayout</code> file to your phone, open the FlashGauge app, and
+      choose the file in the <b>Update</b> tab. The dash holds one layout at a time, so installing
+      a layout replaces the old one. Your odometer and vehicle settings are kept. If an install is
+      interrupted, the dash shows its built-in layout until you install again.</p>
+    <p>To change a layout later, open the same <code>.fglayout</code> in the studio, make your
+      changes and export again. The new file has the next revision number.</p>
+    <p><b>Vehicle settings</b> (the last section on the Build tab) are the per-bike numbers that
+      make the readings correct. They're stored with the bike's wiring adapter, not the layout, so
+      they survive layout changes.</p>
+    <p>What you can change depends on your adapter. With the <b>universal adapter</b> you set
+      everything below. A <b>bike-specific adapter</b> already knows its bike: you can change what
+      varies from bike to bike, such as tire size, but fixed values such as tach pulses (set by the
+      number of cylinders) stay locked.</p>
+    <ul>
+      <li><b>Pulses:</b> tach pulses per crank turn (set by the number of cylinders), and
+        speed-sensor pulses per wheel turn.</li>
+      <li><b>Wheel:</b> rolling circumference in mm. Type a tire size (such as 180/55-17) for an
+        estimate; measuring a roll-out is more accurate.</li>
+      <li><b>Temperature curves:</b> sender reading against temperature for oil and coolant.
+        <i>Generate from an NTC sender</i> fills one in from the sender's datasheet values. A curve
+        left empty hides that reading.</li>
+    </ul>
+    <p>Choose <i>Start from defaults</i> (or open an existing vehicle.json), fill it in and press
+      <i>Export vehicle.json</i>. In the app, go to the <b>Vehicle</b> tab, choose <i>Import
+      file</i>, then <i>Save to dash</i>.</p>
+
+    <h3 id="help-limits">Limits and tips</h3>
+    <table class="help-table">
+      <thead><tr><th>Limit</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Layout space on the dash</td><td>4 MB</td></tr>
+        <tr><td>Elements in a layout</td><td>32</td></tr>
+        <tr><td>Elements that react to a signal</td><td>24</td></tr>
+        <tr><td>Custom font files (one per size)</td><td>8</td></tr>
+        <tr><td>Font sizes</td><td>8 to 160 px</td></tr>
+        <tr><td>Image size</td><td>up to 720 × 720 (bigger images are scaled down)</td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li><b>Speed and distance count in tenths.</b> A needle that should reach 160 mph at the end
+        of its sweep needs a <i>Value at end</i> of 1600. The signal list shows this as
+        "speed (0.1 mph)".</li>
+      <li><b>Drag and drop works.</b> Drop a <code>.fglayout</code> to open it, a photo to make it
+        the background, a font file to add it under Fonts, or a vehicle.json to load it into
+        Vehicle settings.</li>
+      <li><b>Each blinker gets its own image.</b> Choosing an image for one element never changes
+        another, even if they started with the same built-in artwork.</li>
+      <li><b>Watch the warnings at export.</b> A warning such as a label whose font is missing a
+        character won't block the export, but it means something will look wrong on the
+        dash.</li>
+    </ul>
+  </div>
+</dialog>
+
 <datalist id="srcList"></datalist>
 <datalist id="fontList"></datalist>
-<input type="file" id="fileJson" accept=".json,application/json" class="sr">
 <input type="file" id="fileImage" accept="image/*" class="sr">
-<input type="file" id="fileAny" multiple class="sr">
-<input type="file" id="fileBin" class="sr">
+<input type="file" id="fileArt" accept="image/*" class="sr">
 <input type="file" id="fileFgl" accept=".fglayout" class="sr">
 <input type="file" id="fileVehicle" accept=".json,application/json" class="sr">
 <input type="file" id="fileFont" accept=".ttf,.otf,.woff,.woff2" multiple class="sr">
@@ -704,9 +850,8 @@
  *   stride:16 | reserved:16
  * followed by raw pixel data, rows of `stride` bytes.
  *
- * The colour-format value is the one thing worth verifying rather than
- * trusting: use "Check a .bin file's header" on artwork your firmware
- * already renders and compare. If it disagrees, change CF_RGB565 below.
+ * The colour-format values match what the firmware loads (verified with the
+ * header checker in configurator v18, since removed from the UI).
  * ------------------------------------------------------------------ */
 const LV_MAGIC   = 0x19;
 const CF_RGB565  = 0x12;
@@ -718,9 +863,13 @@ const PARTITION_KB = 4096;
 
 /*
  * Layout elements name their artwork logically -- "src": "gauge_bg_720" --
- * and the firmware resolves that to a file. The folder and extension are
- * editable in the UI so this matches whatever the firmware looks for.
+ * and the firmware resolves that to a file. An opened .fglayout can carry a
+ * different folder/extension; importFgl() adopts whatever it uses.
  */
+/* Background: always dithered to RGB565 on the dash, and always sent as a
+ * baseline JPEG at this quality (the dash decodes it on write). */
+const BG_JPEG_QUALITY = 85;
+const BG_SRC = "gauge_bg_720";
 const naming = { dir: "img/", ext: ".bin" };
 const assetPathFor = src => `${naming.dir}${src}${naming.ext}`;
 /* Measured over the wired link; BLE runs a little slower. */
@@ -933,6 +1082,8 @@ const state = {
   zoom: 1,
   offX: 0,
   offY: 0,
+  bgDirty: false,       // photo moved/zoomed since it was last converted
+  moreOpen: false,      // "More settings" in the element panel stays open
 };
 
 const $ = id => document.getElementById(id);
@@ -1041,7 +1192,7 @@ function hasTransparency(imageData) {
  * the binary form the dash loads, at its own size. Transparency decides the
  * colour format.
  */
-async function convertImageToLvgl(file, dither) {
+async function convertImageToLvgl(file, dither, maxDim = Infinity) {
   const img = await new Promise((res, rej) => {
     const i = new Image();
     i.onload = () => res(i);
@@ -1049,21 +1200,28 @@ async function convertImageToLvgl(file, dither) {
     i.src = URL.createObjectURL(file);
   });
 
+  /* Anything bigger than the screen is scaled down to fit it: a phone photo
+   * used as a lamp would otherwise be tens of megabytes on the dash. */
+  const k = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+  const scaled = k < 1 ? ` (scaled down from ${img.width}×${img.height})` : "";
+
   const c = document.createElement("canvas");
-  c.width = img.width; c.height = img.height;
+  c.width = w; c.height = h;
   const g = c.getContext("2d", { willReadFrequently: true });
-  g.drawImage(img, 0, 0);
-  const id = g.getImageData(0, 0, img.width, img.height);
+  g.imageSmoothingQuality = "high";
+  g.drawImage(img, 0, 0, w, h);
+  const id = g.getImageData(0, 0, w, h);
 
   if (hasTransparency(id)) {
     return {
-      bytes: buildLvglImage(toArgb8888(id), img.width, img.height, CF_ARGB8888),
-      note: `${img.width}×${img.height} with transparency`,
+      bytes: buildLvglImage(toArgb8888(id), w, h, CF_ARGB8888),
+      note: `${w}×${h} with transparency${scaled}`, w, h,
     };
   }
   return {
-    bytes: buildLvglImage(toRgb565(id, dither), img.width, img.height, CF_RGB565),
-    note: `${img.width}×${img.height}`,
+    bytes: buildLvglImage(toRgb565(id, dither), w, h, CF_RGB565),
+    note: `${w}×${h}${scaled}`, w, h,
   };
 }
 
@@ -1702,7 +1860,30 @@ function ensureDoc() {
   state.revision = 0;
   state.name = "Untitled layout";
   renderIdentity();
-  say("layoutStatus", "Started a blank layout for you.");
+}
+
+/* Forget everything about the current layout: its files, fonts, photo and
+ * selection. Used before starting blank and before opening a .fglayout, so
+ * nothing from the previous layout leaks into the next one. */
+function resetWorkspace() {
+  state.doc = null;
+  state.assets = new Map();
+  state.inFirmware = new Set();
+  state.userNeeds = new Set();
+  state.selected = null;
+  state.testAngle = null;
+  state.fontFaces = new Map();
+  state.fontFail = new Map();
+  state.fontErr = new Map();
+  state.img = null;
+  state.zoom = 1; state.offX = 0; state.offY = 0;
+  state.bgDirty = false;
+  clearTimeout(bgTimer);
+  naming.dir = "img/"; naming.ext = ".bin";
+  decodeCache.clear();
+  syncBgControls();
+  for (const id of ["layoutStatus", "bgStatus", "elementStatus", "fontStatus", "exportStatus"])
+    $(id).classList.add("hidden");
 }
 
 async function addFontFile(f) {
@@ -1911,10 +2092,9 @@ const cv = $("preview");
 const ctx = cv.getContext("2d", { willReadFrequently: true });
 
 /*
- * Is the working photo actually in the layout? It counts only when some image
- * element names the asset that "Add background" produced. An asset sitting in
- * the file list with nothing pointing at it transfers to the dash and is never
- * drawn, which is invisible unless the preview says so.
+ * The background is one asset (source "background") plus the image element
+ * that draws it. Both are created and kept up to date automatically as the
+ * photo is chosen, moved and zoomed.
  */
 function backgroundAssetPath() {
   for (const [path, a] of state.assets) if (a.source === "background") return path;
@@ -1926,6 +2106,37 @@ function backgroundElement() {
   return state.doc.elements.find(
     el => el && el.type === "image" && el.src && assetPathFor(el.src) === path) || null;
 }
+/* Clicks on the dial pan the photo rather than grabbing a full-screen image,
+ * so a background is never picked up and dragged by accident. */
+function isBackdrop(el) {
+  if (!el || el.type !== "image") return false;
+  if (el === backgroundElement()) return true;
+  const art = el.src ? assetCanvas(assetPathFor(el.src)) : null;
+  return !!art && art.width >= DISPLAY_PX && art.height >= DISPLAY_PX;
+}
+
+/* Keep the photo covering the whole screen: no pan or zoom can pull an edge
+ * into view and leave a black band on the dash. */
+function clampPan() {
+  const im = state.img;
+  if (!im) return;
+  const s = Math.max(DISPLAY_PX / im.width, DISPLAY_PX / im.height) * state.zoom;
+  const mx = Math.max(0, (im.width * s - DISPLAY_PX) / 2);
+  const my = Math.max(0, (im.height * s - DISPLAY_PX) / 2);
+  state.offX = Math.min(mx, Math.max(-mx, state.offX));
+  state.offY = Math.min(my, Math.max(-my, state.offY));
+}
+
+/* The photo, cover-fitted, zoomed and offset exactly as it will be cropped. */
+function drawPhoto(g) {
+  const im = state.img;
+  if (!im) return;
+  const cover = Math.max(DISPLAY_PX / im.width, DISPLAY_PX / im.height);
+  const s = cover * state.zoom;
+  const dw = im.width * s, dh = im.height * s;
+  g.drawImage(im, (DISPLAY_PX - dw) / 2 + state.offX,
+                  (DISPLAY_PX - dh) / 2 + state.offY, dw, dh);
+}
 
 function drawPreview() {
   syncFonts();
@@ -1934,23 +2145,17 @@ function drawPreview() {
   ctx.fillRect(0, 0, DISPLAY_PX, DISPLAY_PX);
 
   /*
-   * The photo is drawn here only while it isn't part of the layout yet, so the
-   * crop controls have something to frame against -- and it's drawn faint, so
-   * it can't be mistaken for what the dash will show. Once an element points at
-   * it, drawElements() draws the converted asset instead, which is the same
-   * path every other image takes and shows the real 16-bit result.
+   * Normally the background is drawn by drawElements() from its converted
+   * 16-bit asset, like every other image. Only if there was no room for its
+   * element is the photo drawn here, faint, so it can't be mistaken for what
+   * the dash will show.
    */
   const bgEl = backgroundElement();
   const loose = !!state.img && !bgEl;
   if (loose) {
-    const im = state.img;
-    const cover = Math.max(DISPLAY_PX / im.width, DISPLAY_PX / im.height);
-    const s = cover * state.zoom;
-    const dw = im.width * s, dh = im.height * s;
     ctx.save();
     ctx.globalAlpha = 0.3;
-    ctx.drawImage(im, (DISPLAY_PX - dw) / 2 + state.offX,
-                      (DISPLAY_PX - dh) / 2 + state.offY, dw, dh);
+    drawPhoto(ctx);
     ctx.restore();
   }
 
@@ -1970,14 +2175,15 @@ function drawPreview() {
     ctx.font = "600 26px ui-sans-serif, system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = "#f0b429";
-    ctx.fillText("Photo not in the layout yet", DISPLAY_PX / 2, DISPLAY_PX / 2 - 12);
+    ctx.fillText("Photo not in the layout", DISPLAY_PX / 2, DISPLAY_PX / 2 - 12);
     ctx.font = "400 20px ui-sans-serif, system-ui, sans-serif";
     ctx.fillStyle = "#c9a227";
-    ctx.fillText("Frame it, then press Add to layout", DISPLAY_PX / 2, DISPLAY_PX / 2 + 18);
+    ctx.fillText(`No room: the dash allows ${MAX_ELEMENTS} elements`, DISPLAY_PX / 2, DISPLAY_PX / 2 + 18);
     ctx.restore();
   }
 
-  $("dialWrap").classList.toggle("has-image", !!state.img);
+  $("dialWrap").classList.toggle("has-image",
+    !!state.img || !!(state.doc?.elements && state.doc.elements.length));
 }
 
 /*
@@ -2050,6 +2256,7 @@ function paintOrder() {
 function elementAt(px, py) {
   const order = paintOrder();
   for (let k = order.length - 1; k >= 0; k--) {
+    if (isBackdrop(order[k].el)) continue;
     const b = elementBounds(order[k].el);
     if (!b) continue;
     if (px >= b.ax && px <= b.ax + b.w && py >= b.ay && py <= b.ay + b.h)
@@ -2067,9 +2274,19 @@ function drawElements() {
   if (!order.length) return;
 
   const cx = DISPLAY_PX / 2, cy = DISPLAY_PX / 2;
+  const bgEl = backgroundElement();
 
   for (const { el } of order) {
     const x = Number(el.x) || 0, y = Number(el.y) || 0;
+    /* While the photo is being moved, draw it live; it is converted to the
+     * dash's 16-bit form as soon as the drag or zoom stops. */
+    if (el === bgEl && state.bgDirty && state.img) {
+      ctx.save();
+      ctx.translate(x, y);
+      drawPhoto(ctx);
+      ctx.restore();
+      continue;
+    }
     // Lamps and other conditional elements only appear when their channel
     // fires; show them faintly so their placement is still visible. In the
     // simulator they follow their channel exactly, like the dash.
@@ -2355,14 +2572,20 @@ wrap.addEventListener("pointermove", e => {
     state.offX += (e.clientX - lastX) * scale;
     state.offY += (e.clientY - lastY) * scale;
     lastX = e.clientX; lastY = e.clientY;
+    clampPan();
+    state.bgDirty = true;
     drawPreview();
   }
 });
 
-wrap.addEventListener("pointerup", e => {
+function endPointer(e) {
+  const wasPanning = panning;
   panning = false; movingEl = false;
   if (wrap.hasPointerCapture(e.pointerId)) wrap.releasePointerCapture(e.pointerId);
-});
+  if (wasPanning && state.bgDirty) commitBackground();
+}
+wrap.addEventListener("pointerup", endPointer);
+wrap.addEventListener("pointercancel", endPointer);
 wrap.addEventListener("wheel", e => {
   if (!state.img) return;
   e.preventDefault();
@@ -2370,18 +2593,22 @@ wrap.addEventListener("wheel", e => {
   state.zoom = next;
   $("zoom").value = Math.round(next * 100);
   $("zoomOut").textContent = next.toFixed(2) + "×";
+  clampPan();
+  state.bgDirty = true;
   drawPreview();
+  scheduleBgCommit(350);
 }, { passive: false });
 
-$("bgQuality").addEventListener("input", e => {
-  $("bgQualityOut").textContent = e.target.value;
-});
-
 $("zoom").addEventListener("input", e => {
+  if (!state.img) return;
   state.zoom = e.target.value / 100;
   $("zoomOut").textContent = state.zoom.toFixed(2) + "×";
+  clampPan();
+  state.bgDirty = true;
   drawPreview();
+  scheduleBgCommit(350);
 });
+$("zoom").addEventListener("change", () => { if (state.bgDirty) commitBackground(); });
 
 /* ---------------------------------------------------- asset table ---- */
 function fmtKB(bytes) {
@@ -2395,44 +2622,29 @@ function renderAssets() {
   if (state.assets.size === 0) {
     tb.innerHTML = '<tr><td colspan="3" class="empty-row">Nothing added yet.</td></tr>';
   } else {
+    const wanted = new Set(requiredAssets().keys());
     for (const [path, a] of state.assets) {
       const tr = document.createElement("tr");
       const td1 = document.createElement("td");
       td1.className = "path";
       td1.textContent = path;
-      if (a.source === "font") {
-        td1.title = "Built from a font in the Fonts section";
-      } else {
-      td1.contentEditable = "true";
-      td1.spellcheck = false;
-      td1.title = "Click to change where this file lands on the dash";
-      td1.onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); ev.target.blur(); } };
-      td1.onblur = ev => {
-        const next = ev.target.textContent.trim().replace(/^\/+/, "");
-        if (!next || next === path) { ev.target.textContent = path; return; }
-        // Rebuild in order so the table doesn't jump around.
-        const rebuilt = new Map();
-        for (const [k, v] of state.assets) rebuilt.set(k === path ? next : k, v);
-        state.assets = rebuilt;
-        renderAssets();
-      };
-      }
+      td1.title = a.source === "font" ? "Built from a font in the Fonts section"
+                : a.source === "background" ? "The background photo"
+                : a.note || "";
       const td2 = document.createElement("td");
       td2.className = "size"; td2.textContent = fmtKB(a.bytes.length);
       const td3 = document.createElement("td");
       td3.className = "act";
-      const rm = document.createElement("button");
-      rm.textContent = "Remove";
-      rm.onclick = () => {
-        if (a.source === "font") {
-          const src = fontSources().find(s => (s.sizes || []).some(
-            z => fontPathFor(fontName(s.base, z)) === path));
-          if (src) { removeFontSize(src, src.sizes.find(
-            z => fontPathFor(fontName(src.base, z)) === path)); return; }
-        }
-        state.assets.delete(path); renderAssets();
-      };
-      td3.appendChild(rm);
+      /* Fonts and the background are managed in their own sections; artwork
+       * belongs to its element. Only a file nothing uses gets a button here. */
+      if (a.source !== "font" && !wanted.has(path)) {
+        td1.style.color = "var(--dim)";
+        td1.title = "Nothing in the layout uses this file";
+        const rm = document.createElement("button");
+        rm.textContent = "Remove";
+        rm.onclick = () => { state.assets.delete(path); renderAssets(); };
+        td3.appendChild(rm);
+      }
       tr.append(td1, td2, td3);
       tb.appendChild(tr);
     }
@@ -2440,12 +2652,15 @@ function renderAssets() {
   decodeCache.clear();
   refreshNameLists();
   renderFonts();
-  renderNeeds();
   renderBudget();
   drawPreview();
-  const nothing = state.assets.size === 0 && !state.doc;
-  $("btnExport").disabled = nothing;
-  $("btnExportLoose").disabled = nothing;
+  let total = 0;
+  for (const a of state.assets.values()) total += a.bytes.length;
+  $("filesSummary").textContent = state.assets.size
+    ? `What's in it · ${state.assets.size} file${state.assets.size === 1 ? "" : "s"}, ${fmtKB(total)}`
+    : "What's in it";
+  syncBgControls();
+  $("btnExport").disabled = !state.doc;
 }
 
 /*
@@ -2481,69 +2696,6 @@ function coveredByFirmware(path, name, kind) {
                         : COMPILED_FONTS.includes(name);
 }
 
-function renderNeeds() {
-  const need = requiredAssets();
-  const block = $("needsBlock");
-  const tb = $("needRows");
-
-  if (need.size === 0) { block.style.display = "none"; return; }
-  block.style.display = "";
-  tb.innerHTML = "";
-
-  for (const [path, info] of need) {
-    const have = state.assets.has(path);
-    const inFw = !have && coveredByFirmware(path, info.name, info.kind);
-
-    const tr = document.createElement("tr");
-    if (!have && !inFw) tr.className = "missing";
-
-    const m = document.createElement("td");
-    if (have)       { m.className = "mark have"; m.textContent = "✓"; }
-    else if (inFw)  { m.className = "mark"; m.style.color = "var(--dim)"; m.textContent = "◦"; }
-    else            { m.className = "mark need"; m.textContent = "•"; }
-
-    const p = document.createElement("td");
-    p.className = "path";
-    p.textContent = path;
-
-    const u = document.createElement("td");
-    u.style.color = "var(--dim)";
-    u.style.fontSize = "12px";
-    u.textContent = info.users.join(", ");
-
-    const s = document.createElement("td");
-    s.className = "size";
-    if (have) {
-      s.textContent = fmtKB(state.assets.get(path).bytes.length);
-    } else if (inFw) {
-      s.textContent = "in firmware";
-      s.style.color = "var(--dim)";
-    } else {
-      s.textContent = "missing";
-      s.style.color = "var(--redline)";
-    }
-
-    const t = document.createElement("td");
-    t.className = "act";
-    if (!have) {
-      const b = document.createElement("button");
-      b.textContent = inFw ? "Needs a file" : "In firmware";
-      b.title = inFw
-        ? "Treat this as one that has to be installed"
-        : "This one is compiled into the firmware, so no file is needed";
-      b.onclick = () => {
-        if (inFw) { state.userNeeds.add(path); state.inFirmware.delete(path); }
-        else      { state.userNeeds.delete(path); state.inFirmware.add(path); }
-        renderNeeds();
-      };
-      t.appendChild(b);
-    }
-
-    tr.append(m, p, u, s, t);
-    tb.appendChild(tr);
-  }
-}
-
 function renderBudget() {
   let total = 0;
   for (const a of state.assets.values()) total += a.bytes.length;
@@ -2571,11 +2723,18 @@ function renderBudget() {
 
 /* ------------------------------------------------------ identity ---- */
 function renderIdentity() {
-  $("identName").textContent = state.name;
+  $("identName").textContent = state.doc ? state.name : "no layout loaded";
   $("identRev").textContent = state.revision || "—";
-  $("identId").textContent = state.id || "—";
+  const nm = $("layoutName");
+  if (document.activeElement !== nm)
+    nm.value = state.doc && state.name !== "Untitled layout" ? state.name : "";
   renderUnits();
 }
+$("layoutName").addEventListener("input", () => {
+  if (!state.doc) { ensureDoc(); renderElementPanel(); renderAssets(); }
+  state.name = $("layoutName").value.trim() || "Untitled layout";
+  $("identName").textContent = state.name;
+});
 
 function renderUnits() {
   const u = docUnits();
@@ -2614,14 +2773,16 @@ const FIELD_SETS = {
   common: [
     { key: "x", label: "X (from centre)", kind: "num" },
     { key: "y", label: "Y (from centre)", kind: "num" },
-    { key: "z", label: "Z (paint order)", kind: "num", prune: 0 },
+    { key: "z", label: "Z (paint order)", kind: "num", prune: 0, adv: true,
+      hint: "higher draws on top; equal values keep list order" },
   ],
   image: [
     { key: "src", label: "Artwork", kind: "src" },
   ],
   needle: [
     { key: "src", label: "Artwork", kind: "src" },
-    { key: "pivot", label: "Pivot in image", kind: "xy" },
+    { key: "pivot", label: "Pivot in image", kind: "xy",
+      hint: "the pixel in the needle image it turns around" },
   ],
   label: [
     { key: "text", label: "Text", kind: "text" },
@@ -2636,7 +2797,7 @@ const FIELD_SETS = {
     { key: "round", label: "Circle", kind: "check" },
     { key: "radius", label: "Corner radius", kind: "num", prune: 0 },
     { key: "border", label: "Border", kind: "colorOpt" },
-    { key: "border_w", label: "Border width", kind: "num", prune: 0 },
+    { key: "border_w", label: "Border width", kind: "num", prune: 0, adv: true },
   ],
   bar: [
     { key: "w", label: "Width", kind: "num" },
@@ -2644,9 +2805,9 @@ const FIELD_SETS = {
     { key: "bg", label: "Track colour", kind: "color" },
     { key: "fill", label: "Fill colour", kind: "color" },
     { key: "radius", label: "Corner radius", kind: "num", prune: 0 },
-    { key: "pad", label: "Inner padding", kind: "num", prune: 0 },
-    { key: "border", label: "Border", kind: "colorOpt" },
-    { key: "border_w", label: "Border width", kind: "num", prune: 0 },
+    { key: "pad", label: "Inner padding", kind: "num", prune: 0, adv: true },
+    { key: "border", label: "Border", kind: "colorOpt", adv: true },
+    { key: "border_w", label: "Border width", kind: "num", prune: 0, adv: true },
     { key: "reverse", label: "Reverse fill", kind: "check" },
   ],
 };
@@ -2656,20 +2817,26 @@ const BIND_FIELD_SETS = {
   rotation: [
     { key: "in_min", label: "Value at start", kind: "num" },
     { key: "in_max", label: "Value at end", kind: "num" },
-    { key: "angle_start", label: "Start angle ×10", kind: "num" },
-    { key: "angle_sweep", label: "Sweep ×10", kind: "num" },
-    { key: "deadband", label: "Deadband ×10", kind: "num" },
-    { key: "filter", label: "Filter (0–1)", kind: "float" },
+    { key: "angle_start", label: "Start angle (°)", kind: "deg10",
+      hint: "how far the needle image is turned at the start value, clockwise; 0 = as drawn" },
+    { key: "angle_sweep", label: "Sweep (°)", kind: "deg10",
+      hint: "how far it turns from start to end" },
     { key: "sweep", label: "Startup sweep", kind: "check" },
-    { key: "sweep_ms", label: "Sweep ms", kind: "num" },
+    { key: "deadband", label: "Deadband (0.1°)", kind: "num", adv: true,
+      hint: "ignore moves smaller than this" },
+    { key: "filter", label: "Filter (0–1)", kind: "float", adv: true,
+      hint: "smoothing: 0 = none, closer to 1 = smoother and slower" },
+    { key: "sweep_ms", label: "Sweep ms", kind: "num", adv: true },
   ],
   value: [
     { key: "in_min", label: "Value empty", kind: "num" },
     { key: "in_max", label: "Value full", kind: "num" },
-    { key: "deadband", label: "Deadband", kind: "num" },
-    { key: "filter", label: "Filter (0–1)", kind: "float" },
     { key: "sweep", label: "Startup sweep", kind: "check" },
-    { key: "sweep_ms", label: "Sweep ms", kind: "num" },
+    { key: "deadband", label: "Deadband", kind: "num", adv: true,
+      hint: "ignore changes smaller than this" },
+    { key: "filter", label: "Filter (0–1)", kind: "float", adv: true,
+      hint: "smoothing: 0 = none, closer to 1 = smoother and slower" },
+    { key: "sweep_ms", label: "Sweep ms", kind: "num", adv: true },
   ],
   fmt: [],   /* see fmtFields(): depends on the channel */
   fmt_time: [
@@ -2680,9 +2847,9 @@ const BIND_FIELD_SETS = {
       hint: "1 shows a tenths value as 123.4; 0 uses Format" },
     { key: "suffix", label: "Suffix", kind: "text",
       hint: '"auto" = unit from the layout, or literal text' },
-    { key: "format", label: "Format", kind: "text",
+    { key: "format", label: "Format", kind: "text", adv: true,
       hint: "printf on the value when Decimals is 0, e.g. %d" },
-    { key: "divisor", label: "Divide by", kind: "num", prune: 1,
+    { key: "divisor", label: "Divide by", kind: "num", prune: 1, adv: true,
       hint: "legacy: 10 turns tenths into whole; prefer Decimals" },
     { key: "hide_when", label: "Hide when off", kind: "flagchan",
       hint: "hide this label while the chosen flag reads 0" },
@@ -2730,10 +2897,22 @@ function renderElementPanel() {
   head.append(tag, idInp);
   host.appendChild(head);
 
+  /* Rarely needed fine-tuning goes in one collapsed "More settings" box. */
+  const more = document.createElement("details");
+  more.className = "tool";
+  more.style.marginTop = "14px";
+  more.open = state.moreOpen;
+  more.ontoggle = () => { state.moreOpen = more.open; };
+  const moreSum = document.createElement("summary");
+  moreSum.textContent = "More settings";
+  const moreBody = document.createElement("div");
+  more.append(moreSum, moreBody);
+
   if (FIELD_SETS[el.type]) {
     const fields = [...FIELD_SETS.common, ...FIELD_SETS[el.type]];
-    for (const f of fields) renderField(host, el, f);
-    renderBindSection(host, el);
+    for (const f of fields) renderField(f.adv ? moreBody : host, el, f);
+    renderBindSection(host, el, moreBody);
+    if (moreBody.childElementCount) host.appendChild(more);
   } else {
     const note = document.createElement("p");
     note.className = "hint";
@@ -2775,7 +2954,7 @@ function renderElementPanel() {
 /* The binding block: what the element reacts to. Mode changes swap the
  * bind object wholesale for that mode's defaults (keeping the channel),
  * so the JSON always holds exactly one coherent shape. */
-function renderBindSection(host, el) {
+function renderBindSection(host, el, advHost) {
   const modes = BIND_MODES[el.type] || ["none"];
   const mode = bindMode(el);
 
@@ -2849,7 +3028,8 @@ function renderBindSection(host, el) {
 
   const fields = mode === "fmt" ? fmtFields(el.bind) : (BIND_FIELD_SETS[mode] || []);
   for (const f of fields)
-    renderField(host, el.bind, f, () => { renderSweepRefresh(el); drawPreview(); });
+    renderField(f.adv && advHost ? advHost : host, el.bind, f,
+                () => { renderSweepRefresh(el); drawPreview(); });
   if (mode === "fmt" && el.bind.suffix === "auto") {
     const note = document.createElement("p");
     note.className = "hint";
@@ -2870,7 +3050,21 @@ function fmtFields(b) {
  * a full panel rebuild, but that steals focus mid-typing, so only refresh
  * when the slider exists and the needle is at rest. */
 function renderSweepRefresh(el) {
-  if (el.type === "needle" && state.testAngle == null) renderElementPanel();
+  if (el.type !== "needle") return;
+  /* Retune the test-sweep slider in place; a full panel rebuild would take
+   * focus away from the field being typed in. */
+  const slider = $("elementFields").querySelector("input[data-sweep]");
+  const hint = $("elementFields").querySelector("[data-sweep-hint]");
+  if (!slider) return;
+  const b = el.bind || {};
+  const start10 = Number(b.angle_start) || 0, sweep10 = Number(b.angle_sweep) || 0;
+  const a0 = start10 / 10, a1 = (start10 + sweep10) / 10;
+  if (sweep10 === 0) { slider.min = "0"; slider.max = "360"; }
+  else { slider.min = String(Math.min(a0, a1)); slider.max = String(Math.max(a0, a1)); }
+  if (hint) hint.textContent = sweep10 === 0
+    ? "No sweep range in this element's binding — showing raw angle."
+    : `Sweeps ${a0.toFixed(0)}° to ${a1.toFixed(0)}°, matching the dash. ` +
+      `Watch the tip trace the dial to check the pivot.`;
 }
 
 function deleteSelected() {
@@ -2890,7 +3084,7 @@ function renderElementList() {
   tb.innerHTML = "";
   const els = state.doc?.elements;
   if (!Array.isArray(els) || !els.length) {
-    tb.innerHTML = '<tr><td class="empty-row">No elements yet — add one above, or load a dash.json.</td></tr>';
+    tb.innerHTML = '<tr><td class="empty-row">No elements yet — add one above, or open a .fglayout.</td></tr>';
     return;
   }
   els.forEach((el, i) => {
@@ -2940,17 +3134,10 @@ function refreshNameLists() {
 }
 
 function addElement(type) {
-  if (!state.doc) {
-    state.doc = { version: 1, screen: { w: DISPLAY_PX, h: DISPLAY_PX }, elements: [] };
-    state.id = uuid4();
-    state.revision = 0;
-    state.name = "Untitled layout";
-    renderIdentity();
-    say("layoutStatus", "Started a blank layout for you.");
-  }
+  ensureDoc();
   if (!Array.isArray(state.doc.elements)) state.doc.elements = [];
   if (state.doc.elements.length >= MAX_ELEMENTS) {
-    say("elementStatus", `The engine caps a layout at ${MAX_ELEMENTS} elements.`, true);
+    say("elementStatus", `The dash allows at most ${MAX_ELEMENTS} elements in a layout.`, true);
     return;
   }
   $("elementStatus").classList.add("hidden");
@@ -2967,7 +3154,7 @@ for (const b of document.querySelectorAll("[data-add]"))
 /* Arrow keys nudge the selected element; Delete removes it. Never while
  * typing in a field. */
 document.addEventListener("keydown", e => {
-  if (sim.on) return;
+  if (sim.on || $("helpDlg").open) return;   // keys belong to the guide while it's open
   const t = e.target;
   if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" ||
             t.tagName === "SELECT" || t.isContentEditable)) return;
@@ -3013,6 +3200,7 @@ function renderSweepControl(host, el) {
   slider.min = String(Math.min(a0, a1));
   slider.max = String(Math.max(a0, a1));
   slider.step = "1";
+  slider.dataset.sweep = "1";
   slider.value = String(state.testAngle ?? a0);
 
   const out = document.createElement("output");
@@ -3033,6 +3221,7 @@ function renderSweepControl(host, el) {
   hint.style.fontSize = "12px";
   hint.style.color = "var(--dim)";
   hint.style.marginTop = "8px";
+  hint.dataset.sweepHint = "1";
   if (sweep10 === 0) {
     hint.textContent = "No sweep range in this element's binding — showing raw angle.";
     slider.min = "0"; slider.max = "360";
@@ -3066,7 +3255,14 @@ function renderField(host, obj, f, after) {
     if (prune !== undefined && v === prune) delete obj[key]; else obj[key] = v;
   };
 
-  if (f.kind === "num" || f.kind === "float") {
+  if (f.kind === "deg10") {
+    /* Stored in tenths of a degree, edited in degrees. */
+    const inp = numInput((Number(obj[f.key]) || 0) / 10,
+                         v => { obj[f.key] = Math.round(v * 10); done(); });
+    inp.step = "any";
+    inp.dataset.field = f.key;
+    row.appendChild(inp);
+  } else if (f.kind === "num" || f.kind === "float") {
     const inp = numInput(obj[f.key] ?? (f.prune ?? 0), v => { setPruned(f.key, v, f.prune); done(); });
     if (f.kind === "float") inp.step = "any";
     inp.dataset.field = f.key;
@@ -3129,12 +3325,27 @@ function renderField(host, obj, f, after) {
     inp.value = obj[f.key] ?? "";
     inp.setAttribute("list", f.kind === "src" ? "srcList" : "fontList");
     inp.spellcheck = false;
-    inp.placeholder = f.kind === "src" ? "artwork name" : "font name";
+    inp.placeholder = f.kind === "src" ? "built-in name, or choose an image" : "font name";
     inp.addEventListener("input", () => {
       if (inp.value) obj[f.key] = inp.value; else delete obj[f.key];
       renderAssets();   // requirements, budget and preview all move with it
     });
-    row.appendChild(inp);
+    if (f.kind === "src") {
+      const pair = document.createElement("div");
+      pair.className = "pair tight";
+      const pick = document.createElement("button");
+      pick.textContent = "Choose image";
+      pick.style.cssText = "font-size:12px;padding:5px 10px;white-space:nowrap";
+      pick.title = "Use your own PNG or JPEG (PNG transparency is kept)";
+      pick.onclick = () => {
+        if (obj === backgroundElement()) { $("fileImage").click(); return; }
+        artTarget = obj; $("fileArt").click();
+      };
+      pair.append(inp, pick);
+      row.appendChild(pair);
+    } else {
+      row.appendChild(inp);
+    }
   } else if (f.kind === "flagchan") {
     const sel = document.createElement("select");
     const none = document.createElement("option");
@@ -3205,79 +3416,17 @@ function syncElementPanelFields() {
   if (setY) setY.value = String(Number(el.y) || 0);
 }
 
-/* ------------------------------------------------- naming controls ---- */
-function applyNaming() {
-  naming.dir = $("namingDir").value.trim();
-  if (naming.dir && !naming.dir.endsWith("/")) naming.dir += "/";
-  naming.ext = $("namingExt").value.trim();
-  renderAssets();
-}
-$("namingDir").addEventListener("change", applyNaming);
-$("namingExt").addEventListener("change", applyNaming);
-
-/* Re-key already-added files onto the paths the layout expects. */
-$("btnRepath").onclick = () => {
-  const next = new Map();
-  let moved = 0;
-  for (const [path, a] of state.assets) {
-    const want = pathForAddedFile(path.split("/").pop());
-    if (want !== path) moved++;
-    next.set(want, a);
-  }
-  state.assets = next;
-  renderAssets();
-  say("exportStatus", moved
-    ? `Moved ${moved} file${moved === 1 ? "" : "s"} onto the paths this layout expects.`
-    : "Every file is already on the path this layout expects.");
-};
-
 /* --------------------------------------------------- file loading ---- */
 const readBytes = f => f.arrayBuffer().then(b => new Uint8Array(b));
 
-$("btnLoadJson").onclick = () => $("fileJson").click();
-$("fileJson").onchange = async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  try {
-    const doc = JSON.parse(await f.text());
-    if (looksLikeVehicle(doc)) {             // wrong button, right file: route it
-      vehLoad(doc, f.name, `${f.name} is vehicle settings, so it opened here rather than as a layout.`);
-      $("vehicleBlock").scrollIntoView({ behavior: "smooth", block: "start" });
-      e.target.value = "";
-      return;
-    }
-    state.doc = doc;
-    const L = doc.layout || {};
-    state.id = L.id || uuid4();
-    state.revision = Number(L.revision) || 0;
-    state.name = L.name || f.name.replace(/\.json$/i, "");
-    renderIdentity();
-
-    state.selected = null;
-    state.testAngle = null;
-    renderElementPanel();
-    const els = Array.isArray(doc.elements) ? doc.elements.length : 0;
-    const need = requiredAssets().size;
-    say("layoutStatus",
-      `Loaded ${f.name}: ${els} element${els === 1 ? "" : "s"} kept exactly as they are.` +
-      (need ? `\nIt needs ${need} artwork file${need === 1 ? "" : "s"} — see the list below.` : ""));
-    renderAssets();
-  } catch (err) {
-    say("layoutStatus", `${f.name} isn't valid JSON, so nothing was loaded.`, true);
-  }
-  e.target.value = "";
-};
-
 $("btnNewJson").onclick = () => {
-  state.doc = { version: 1, screen: { w: DISPLAY_PX, h: DISPLAY_PX }, elements: [] };
-  state.id = uuid4();
-  state.revision = 0;
-  state.name = "Untitled layout";
-  renderIdentity();
+  const hasWork = state.doc && ((state.doc.elements || []).length || state.assets.size);
+  if (hasWork && !confirm("Start over with a blank layout? Anything you haven't exported is lost."))
+    return;
+  resetWorkspace();
+  ensureDoc();
   say("layoutStatus",
-    "Started a blank layout. Add elements above — the background usually comes first.");
-  state.selected = null;
-  state.testAngle = null;
+    "Started a blank layout. Choose a background photo, then add elements.");
   renderElementPanel();
   renderAssets();
 };
@@ -3361,13 +3510,27 @@ async function jpegToLvgl(jpegBytes) {
  * local setting onto someone else's layout and then reporting every asset as
  * missing.
  */
+/*
+ * Adopt the folder and extension the bundle actually uses. An element names
+ * its artwork logically ("tachneedle"); which path that resolves to belongs to
+ * the firmware that built the bundle, so read it back rather than forcing the
+ * default onto someone else's layout and then reporting every asset as missing.
+ */
 function adoptNaming(paths) {
   const imgs = paths.filter(p => p !== "dash.json" && !p.startsWith("font/") && p.includes("/"));
   if (!imgs.length) return;
   const dir = imgs[0].slice(0, imgs[0].lastIndexOf("/") + 1);
-  if (imgs.every(p => p.startsWith(dir))) { naming.dir = dir; $("namingDir").value = dir; }
+  if (imgs.every(p => p.startsWith(dir))) naming.dir = dir;
   const m = imgs[0].match(/(\.[^./]+)$/);
-  if (m && imgs.every(p => p.endsWith(m[1]))) { naming.ext = m[1]; $("namingExt").value = m[1]; }
+  if (m && imgs.every(p => p.endsWith(m[1]))) naming.ext = m[1];
+}
+
+/* A full-screen opaque image in a bundle is the background, whether it
+ * travelled as JPEG or as a raw .bin. */
+function isBackgroundBin(bytes) {
+  const h = readLvglHeader(bytes);
+  return !!h && h.magic === LV_MAGIC && h.cf === CF_RGB565 &&
+         h.w === DISPLAY_PX && h.h === DISPLAY_PX;
 }
 
 async function importFgl(bytes, fileName) {
@@ -3399,63 +3562,49 @@ async function importFgl(bytes, fileName) {
       try {
         const { bin, img } = await jpegToLvgl(e.bytes);
         assets.set(e.path, {
-          bytes: bin, source: "background", jpegBytes: e.bytes,
+          bytes: bin, source: "background", jpegBytes: e.bytes, jpegImg: img,
           note: `${img.width}×${img.height}, arrived as JPEG`,
         });
         if (!bgImg) bgImg = img;
-        notes.push(`${e.path} decoded from JPEG (${fmtKB(e.bytes.length)} → ${fmtKB(bin.length)} on the dash)`);
       } catch (err) {
         notes.push(`${e.path} is flagged JPEG but ${err.message}`);
       }
       continue;
     }
-    assets.set(e.path, { bytes: e.bytes, source: "file" });
+    const bg = !bgImg && ![...assets.values()].some(a => a.source === "background") &&
+               isBackgroundBin(e.bytes);
+    assets.set(e.path, { bytes: e.bytes, source: bg ? "background" : "file" });
   }
 
+  resetWorkspace();
   state.doc = doc;
   const L = doc.layout || {};
   state.id = L.id || uuid4();
   state.revision = Number(L.revision) || 0;
   state.name = L.name || fileName.replace(/\.fglayout$/i, "");
   state.assets = assets;
-  state.inFirmware = new Set();
-  state.userNeeds = new Set();
-  state.selected = null;
-  state.testAngle = null;
-  decodeCache.clear();
 
-  /* An imported background becomes the working image, so the JPEG export path
-     and the crop controls have something to act on. Identity zoom and offset
-     mean backgroundImageData() reproduces it pixel-for-pixel unless moved. */
-  if (bgImg) {
-    state.img = bgImg;
-    state.zoom = 1; state.offX = 0; state.offY = 0;
-    $("zoom").value = 100;
-    $("zoomOut").textContent = "1.00×";
-    $("btnAddBg").disabled = false;
-    $("btnClearImage").disabled = false;
-  }
+  /* An imported JPEG background becomes the working photo, so it can be moved
+     and zoomed. Identity zoom and offset mean backgroundImageData() reproduces
+     it pixel-for-pixel, and export passes the original JPEG through untouched
+     unless it's moved. */
+  if (bgImg) state.img = bgImg;
 
   adoptNaming([...assets.keys()]);
-  $("btnRemix").disabled = false;
 
   renderIdentity();
   renderElementPanel();
-  renderElementList();
   renderAssets();
-  drawPreview();
 
-  const missing = [...requiredAssets().keys()].filter(p => !assets.has(p));
+  const missing = [...requiredAssets().keys()].filter(
+    p => !assets.has(p) && !coveredByFirmware(p, p.split("/").pop().replace(/\.[^.]+$/, ""),
+                                               p.startsWith("font/") ? "font" : "img"));
   const { errors } = validateLayout();
 
   say("layoutStatus",
-    `Opened ${fileName}: ${doc.elements.length} element${doc.elements.length === 1 ? "" : "s"} ` +
-    `and ${assets.size} file${assets.size === 1 ? "" : "s"}, revision ${state.revision}.` +
-    (notes.length ? "\n  " + notes.join("\n  ") : "") +
-    (missing.length
-      ? `\nThe layout also expects ${missing.join(", ")} — the dash may have those built in, ` +
-        `but this preview can't draw them.`
-      : "") +
+    `Opened ${state.name}, revision ${state.revision}.` +
+    (notes.length ? "\n" + notes.join("\n") : "") +
+    (missing.length ? `\nIt expects ${missing.join(", ")}, which isn't in the file.` : "") +
     (errors.length
       ? `\nIt won't export as-is: ${errors.length} problem${errors.length === 1 ? "" : "s"} to fix first.`
       : ""),
@@ -3474,48 +3623,51 @@ $("fileFgl").onchange = async e => {
   e.target.value = "";
 };
 
-/*
- * Publishing someone else's layout under its own id would collide with the
- * original on any dash that already has it -- same id, and a revision that
- * marches independently. A remix gets a fresh identity and keeps a pointer
- * back to where it came from.
- */
-$("btnRemix").onclick = () => {
-  if (!state.doc) return;
-  const from = state.id;
-  state.doc.layout = Object.assign({}, state.doc.layout, { parent: from });
-  state.id = uuid4();
-  state.revision = 0;
-  state.name = state.name.replace(/\s*\(remix\)$/i, "") + " (remix)";
-  renderIdentity();
-  say("layoutStatus",
-    `New identity ${state.id}, starting at revision 0.\n` +
-    `Recorded as a remix of ${from}. Rename it under Export before you publish it.`);
-};
+/* ------------------------------------------------------ background ---- */
+let bgTimer = 0;
 
-$("btnLoadImage").onclick = () => $("fileImage").click();
-$("fileImage").onchange = e => {
-  const f = e.target.files[0];
-  if (!f) return;
+function syncBgControls() {
+  const has = !!state.img;
+  $("zoom").disabled = !has;
+  $("zoom").value = Math.round(state.zoom * 100);
+  $("zoomOut").textContent = state.zoom.toFixed(2) + "×";
+  $("btnClearImage").disabled = !has && !backgroundAssetPath();
+}
+
+function loadPhoto(file) {
   const img = new Image();
   img.onload = () => {
     state.img = img;
     state.zoom = 1; state.offX = 0; state.offY = 0;
-    $("zoom").value = 100;
-    $("zoomOut").textContent = "1.00×";
-    $("btnAddBg").disabled = false;
-    $("btnClearImage").disabled = false;
-    drawPreview();
+    commitBackground();
   };
-  img.src = URL.createObjectURL(f);
+  img.onerror = () => say("bgStatus", `${file.name} couldn't be read as an image.`, true);
+  img.src = URL.createObjectURL(file);
+}
+
+$("btnLoadImage").onclick = () => $("fileImage").click();
+$("fileImage").onchange = e => {
+  const f = e.target.files[0];
+  if (f) loadPhoto(f);
   e.target.value = "";
 };
 
 $("btnClearImage").onclick = () => {
+  const el = backgroundElement();
+  if (el) {
+    const i = state.doc.elements.indexOf(el);
+    state.doc.elements.splice(i, 1);
+    if (state.selected === i) state.selected = null;
+    else if (state.selected != null && state.selected > i) state.selected -= 1;
+  }
+  const path = backgroundAssetPath();
+  if (path) state.assets.delete(path);
   state.img = null;
-  $("btnAddBg").disabled = true;
-  $("btnClearImage").disabled = true;
-  drawPreview();
+  state.bgDirty = false;
+  clearTimeout(bgTimer);
+  $("bgStatus").classList.add("hidden");
+  renderElementPanel();
+  renderAssets();
 };
 
 /*
@@ -3528,32 +3680,20 @@ function backgroundImageData() {
   const c = document.createElement("canvas");
   c.width = DISPLAY_PX; c.height = DISPLAY_PX;
   const g = c.getContext("2d", { willReadFrequently: true });
-
   g.fillStyle = "#000";
   g.fillRect(0, 0, DISPLAY_PX, DISPLAY_PX);
-
-  if (state.img) {
-    const im = state.img;
-    const cover = Math.max(DISPLAY_PX / im.width, DISPLAY_PX / im.height);
-    const s = cover * state.zoom;
-    const dw = im.width * s, dh = im.height * s;
-    g.drawImage(im, (DISPLAY_PX - dw) / 2 + state.offX,
-                    (DISPLAY_PX - dh) / 2 + state.offY, dw, dh);
-  }
+  drawPhoto(g);
   return g.getImageData(0, 0, DISPLAY_PX, DISPLAY_PX);
 }
 
-/*
- * Encode the cropped background as a baseline JPEG blob (for JPEG-on-dash).
- * Canvas toBlob produces baseline JPEG, which is what the dash's TJpgDec
- * decoder requires. Returns a Uint8Array, or null on failure.
- */
 /* True once the crop controls have been touched, meaning a stored source image
    no longer represents what the background should be. */
 function bgMoved() {
   return state.zoom !== 1 || state.offX !== 0 || state.offY !== 0;
 }
 
+/* Encode the cropped background as a baseline JPEG (canvas toBlob makes
+ * baseline, which the dash's TJpgDec decoder requires). */
 async function backgroundJpegBytes(quality) {
   const c = document.createElement("canvas");
   c.width = DISPLAY_PX; c.height = DISPLAY_PX;
@@ -3565,65 +3705,110 @@ async function backgroundJpegBytes(quality) {
   return new Uint8Array(await blob.arrayBuffer());
 }
 
+function scheduleBgCommit(ms) {
+  clearTimeout(bgTimer);
+  bgTimer = setTimeout(() => { if (state.bgDirty) commitBackground(); }, ms);
+}
+
 /*
- * Adding the background is two things, and only ever wanted together: a file
- * for the dash to load, and an element telling it to draw that file. Adding the
- * file alone produced a layout that transferred a megabyte and rendered
- * nothing, so the element comes with it -- placed first in paint order, since a
- * background under the needles is the only arrangement that makes sense.
+ * Turn the framed photo into the dash's background: a dithered 16-bit file
+ * plus the image element that draws it, first in paint order so everything
+ * else sits on top. Runs whenever a photo is chosen and whenever a move or
+ * zoom finishes, so the layout always holds what the dial shows.
  */
-$("btnAddBg").onclick = () => {
-  const path = $("bgPath").value.trim().replace(/^\/+/, "");
-  if (!path || !state.img) return;
-  const px = toRgb565(backgroundImageData(), $("dither").checked);
-  const bin = buildLvglImage(px, DISPLAY_PX, DISPLAY_PX, CF_RGB565);
-  state.assets.set(path, { bytes: bin, source: "background" });
-  decodeCache.delete(path);
-
-  let note = `Added ${path} — the cropped photo only, without the layout drawn on it.`;
-
-  if (!state.doc) {
-    state.doc = { version: 1, screen: { w: DISPLAY_PX, h: DISPLAY_PX }, elements: [] };
-    state.id = uuid4();
-    state.revision = 0;
-    state.name = "Untitled layout";
-    renderIdentity();
-  }
+function commitBackground() {
+  clearTimeout(bgTimer);
+  if (!state.img) return;
+  ensureDoc();
   if (!Array.isArray(state.doc.elements)) state.doc.elements = [];
 
-  /* The element's src is the filename with the folder and extension stripped,
-     because that is how assetPathFor() puts it back together. */
-  const src = path.split("/").pop().replace(/\.[^.]+$/, "");
-
-  if (!backgroundElement()) {
-    if (state.doc.elements.length >= MAX_ELEMENTS) {
-      note += `\nNo element was added to draw it — the layout is already at the ` +
-              `${MAX_ELEMENTS}-element limit, so it would transfer and never appear.`;
-    } else {
-      const el = makeElement("image");
-      el.id = "background";
-      el.src = src;
-      el.x = 0; el.y = 0;
-      state.doc.elements.unshift(el);            // first drawn, so everything sits on top
-      if (state.selected != null) state.selected += 1;
-      note += `\nAdded an image element "${el.id}" to draw it, first in the list ` +
-              `so the needles sit on top.`;
-      renderElementPanel();
-      renderElementList();
-    }
+  if (!backgroundElement() && state.doc.elements.length >= MAX_ELEMENTS) {
+    state.bgDirty = false;
+    say("bgStatus", `There's no room for the background: the dash allows ${MAX_ELEMENTS} ` +
+                    `elements and this layout has that many. Delete one, then choose the photo again.`, true);
+    renderAssets();
+    return;
   }
 
+  const path = backgroundAssetPath() || assetPathFor(BG_SRC);
+  const prev = state.assets.get(path);
+  const keepJpeg = prev && prev.jpegBytes && !bgMoved() && state.img === prev.jpegImg;
+  const bin = buildLvglImage(toRgb565(backgroundImageData(), true),
+                             DISPLAY_PX, DISPLAY_PX, CF_RGB565);
+  state.assets.set(path, keepJpeg ? prev : { bytes: bin, source: "background" });
+  decodeCache.delete(path);
+  state.bgDirty = false;
+
+  if (!backgroundElement()) {
+    const el = makeElement("image");
+    el.id = "background";
+    el.src = path.slice(naming.dir.length, path.length - naming.ext.length) || BG_SRC;
+    el.x = 0; el.y = 0;
+    state.doc.elements.unshift(el);            // first drawn, so everything sits on top
+    if (state.selected != null) state.selected += 1;
+    renderElementPanel();
+  }
+  $("bgStatus").classList.add("hidden");
   renderAssets();
-  drawPreview();
-  say("layoutStatus", note);
+}
+
+/* ------------------------------------------- an element's own artwork ---- */
+let artTarget = null;
+
+/* Where an element's chosen image goes. It replaces the artwork in place when
+ * this element is the only user of a file it already owns; otherwise (shared
+ * with another element, or a built-in name) it gets a file of its own, named
+ * after the element, so changing one blinker never changes the other. */
+function artNameFor(el) {
+  const els = state.doc?.elements || [];
+  const own = el.src && !els.some(o => o !== el && o.src === el.src) &&
+              state.assets.get(assetPathFor(el.src))?.auto;
+  if (own) return el.src;
+  let base = (el.id || el.type).toLowerCase().replace(/[^a-z0-9]+/g, "_")
+                               .replace(/^_+|_+$/g, "").slice(0, 24) || el.type;
+  if (!/^[a-z]/.test(base)) base = "art_" + base;
+  const taken = n => COMPILED_IMAGES.includes(n) || state.assets.has(assetPathFor(n)) ||
+                     els.some(o => o !== el && o.src === n);
+  let name = base, k = 2;
+  while (taken(name)) name = `${base}_${k++}`;
+  return name;
+}
+
+/* Drop artwork files this tool made for elements that no longer use them. */
+function pruneAutoArt() {
+  const wanted = new Set(requiredAssets().keys());
+  for (const [path, a] of [...state.assets])
+    if (a.auto && !wanted.has(path)) state.assets.delete(path);
+}
+
+$("fileArt").onchange = async e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  const el = artTarget;
+  artTarget = null;
+  if (!f || !el) return;
+  let r;
+  try { r = await convertImageToLvgl(f, true, DISPLAY_PX); }
+  catch { say("elementStatus", `${f.name} couldn't be read as an image.`, true); return; }
+  const name = artNameFor(el);
+  state.assets.set(assetPathFor(name), { bytes: r.bytes, source: "converted", note: r.note, auto: true });
+  decodeCache.delete(assetPathFor(name));
+  el.src = name;
+  if (el.type === "needle") {
+    const pv = Array.isArray(el.pivot) ? el.pivot : [-1, -1];
+    if (!(pv[0] >= 0 && pv[0] < r.w && pv[1] >= 0 && pv[1] < r.h))
+      el.pivot = [Math.round(r.w / 2), Math.max(0, Math.round(r.h - Math.min(r.w / 2, r.h * 0.1)))];
+  }
+  pruneAutoArt();
+  say("elementStatus", `${el.id || el.type} now uses ${f.name}: ${r.note}.` +
+      (el.type === "needle" ? " Use Test sweep to check the pivot." : ""));
+  renderElementPanel();
+  renderAssets();
 };
 
-$("btnAddFile").onclick = () => $("fileAny").click();
 /*
- * Work out where an added file belongs. The layout already says which
- * artwork it needs, so a file whose name matches one of those entries goes
- * to that exact path -- no guessing, and it works whatever the extension.
- * Only unrecognised files fall back to a guess.
+ * Files dropped on the page that aren't a layout, photo or font. A dropped
+ * file whose name matches artwork the layout already names goes to that path.
  */
 function pathForAddedFile(name) {
   const wanted = requiredAssets();
@@ -3641,75 +3826,14 @@ function pathForAddedFile(name) {
   return name;
 }
 
-/*
- * Source images get converted; anything else (already-built binaries,
- * fonts) is stored as-is.
- */
 async function addFile(f) {
   if (/\.(ttf|otf|woff2?)$/i.test(f.name)) {
     try { return await addFontFile(f); } catch (err) { return err.message; }
   }
-  const isSource = /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name) ||
-                   (f.type || "").startsWith("image/");
-  const path = pathForAddedFile(f.name);
-
-  if (isSource) {
-    try {
-      const { bytes, note } = await convertImageToLvgl(f, $("dither").checked);
-      state.assets.set(path, { bytes, source: "converted", note });
-      return `${f.name} → ${note}`;
-    } catch {
-      return `${f.name} could not be read as an image`;
-    }
-  }
-  state.assets.set(path, { bytes: await readBytes(f), source: "file" });
+  ensureDoc();
+  state.assets.set(pathForAddedFile(f.name), { bytes: await readBytes(f), source: "file" });
   return null;
 }
-
-$("fileAny").onchange = async e => {
-  const notes = [];
-  for (const f of e.target.files) {
-    const n = await addFile(f);
-    if (n) notes.push(n);
-  }
-  renderAssets();
-  if (notes.length) say("layoutStatus", "Converted for the dash:\n  " + notes.join("\n  "));
-  e.target.value = "";
-};
-
-/* ------------------------------------------------ header inspector ---- */
-$("btnInspect").onclick = () => $("fileBin").click();
-$("fileBin").onchange = async e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const bytes = await readBytes(f);
-  const h = readLvglHeader(bytes);
-  const out = $("inspectOut");
-
-  if (!h) { out.textContent = `${f.name} is too small to hold a header.`; e.target.value = ""; return; }
-
-  const pixelBytes = bytes.length - HEADER_LEN;
-  const expect = h.stride * h.h;
-  const mine = buildLvglImage(new Uint8Array(0), h.w, h.h).slice(0, HEADER_LEN);
-  const same = [...mine].every((b, i) => b === bytes[i]);
-
-  out.textContent =
-`${f.name}  (${bytes.length.toLocaleString()} bytes)
-
-  magic     0x${h.magic.toString(16).padStart(2,"0")}   ${h.magic === LV_MAGIC ? "LVGL 9" : "not an LVGL 9 image"}
-  format    0x${h.cf.toString(16).padStart(2,"0")}   ${CF_NAMES[h.cf] || "unrecognised"}
-  flags     0x${h.flags.toString(16).padStart(4,"0")}
-  size      ${h.w} × ${h.h}
-  stride    ${h.stride} bytes per row
-  pixels    ${pixelBytes.toLocaleString()} bytes  ${pixelBytes === expect ? "(matches)" : `(header implies ${expect.toLocaleString()})`}
-
-  first 12 bytes  ${[...bytes.slice(0,12)].map(b=>b.toString(16).padStart(2,"0")).join(" ")}
-  this tool would write  ${[...mine].map(b=>b.toString(16).padStart(2,"0")).join(" ")}
-
-  ${same ? "Same header layout — this tool's output will load the same way."
-         : "Headers differ. If this file works on your dash, change CF_RGB565 in the script to 0x" + h.cf.toString(16) + "."}`;
-  e.target.value = "";
-};
 
 /* ------------------------------------------------------ validation ---- */
 /*
@@ -3724,10 +3848,10 @@ function validateLayout() {
   if (!Array.isArray(els)) return { errors: ["No layout loaded."], warns };
 
   if (els.length > MAX_ELEMENTS)
-    errors.push(`${els.length} elements — the engine caps at ${MAX_ELEMENTS}`);
+    errors.push(`${els.length} elements — the dash allows at most ${MAX_ELEMENTS}`);
   const nb = els.filter(e => e && e.bind).length;
   if (nb > MAX_BINDINGS)
-    errors.push(`${nb} bindings — the engine caps at ${MAX_BINDINGS}`);
+    errors.push(`${nb} elements react to signals — the dash allows at most ${MAX_BINDINGS}`);
 
   const chans = new Set(CHANNELS.map(c => c.key));
   const ids = new Set();
@@ -3750,22 +3874,22 @@ function validateLayout() {
     }
 
     if (el.type === "image" || el.type === "needle") {
-      if (!el.src) errors.push(`${at}: no artwork chosen — create_${el.type}() fails`);
+      if (!el.src) errors.push(`${at}: no artwork chosen`);
       else if (!srcOk(el.src))
-        errors.push(`${at}: "${el.src}" isn't added or built in — the dash can't resolve it`);
+        errors.push(`${at}: "${el.src}" isn't built-in artwork — use Choose image to give it a picture`);
     }
     if (el.type === "needle") {
       if (!Array.isArray(el.pivot) || el.pivot.length !== 2 ||
           !el.pivot.every(Number.isFinite))
-        errors.push(`${at}: needle pivot must be two numbers — create_needle() fails`);
-      if (!el.bind) errors.push(`${at}: a needle needs a binding — create_needle() fails`);
+        errors.push(`${at}: the needle's pivot must be two numbers`);
+      if (!el.bind) errors.push(`${at}: a needle needs a signal to follow`);
     }
     if (el.type === "label" && el.font && !fontOk(el.font))
-      errors.push(`${at}: font "${el.font}" isn't added or built in — create_label() fails`);
+      errors.push(`${at}: font "${el.font}" isn't built in or added under Fonts`);
     if (el.type === "bar") {
       if (!(Number(el.w) > 0 && Number(el.h) > 0))
         errors.push(`${at}: a bar needs a width and height`);
-      if (!el.bind) errors.push(`${at}: a bar needs a binding — create_bar() fails`);
+      if (!el.bind) errors.push(`${at}: a bar needs a signal to follow`);
     }
 
     const b = el.bind;
@@ -3922,9 +4046,11 @@ function download(name, bytes) {
 
 $("btnExport").onclick = async () => {
   if (!state.doc) {
-    say("exportStatus", "Load a dash.json first, or start a blank layout.", true);
+    say("exportStatus", "Open a .fglayout first, or start a blank layout.", true);
     return;
   }
+  if (state.bgDirty) commitBackground();
+  $("exportStatus").classList.add("hidden");
   if (!exportGate()) return;
 
   // The phone matches files by name, so duplicates across folders can't be
@@ -3958,8 +4084,8 @@ $("btnExport").onclick = async () => {
   // that the dash decodes to RGB565 -- much smaller to transfer. Only the
   // background qualifies (lamps/needle have transparency, which JPEG can't
   // carry); everything else ships as its stored .bin.
-  const wantJpeg = $("bgJpeg").checked && !!state.img;
-  const quality = Number($("bgQuality").value) || 85;
+  const wantJpeg = !!state.img;
+  const quality = BG_JPEG_QUALITY;
 
   const files = [];
   let jpegNote = "";
@@ -3997,33 +4123,9 @@ $("btnExport").onclick = async () => {
   const prior = $("exportStatus").classList.contains("hidden")
     ? "" : $("exportStatus").textContent + "\n\n";
   say("exportStatus", prior +
-    `Exported revision ${state.revision}: one file, ${fmtKB(bundle.length)}.` +
-    jpegNote +
-    `\nMove it to your phone and choose it in the app's Update tab.`);
+    `Saved ${slug}-rev${state.revision}.fglayout (${fmtKB(bundle.length)}). ` +
+    `Move it to your phone and choose it in the app's Update tab.`);
 };
-
-/* Loose files for the wired workflow (ftp1_send.py can take a directory). */
-$("btnExportLoose").onclick = async () => {
-  if (!state.doc) {
-    say("exportStatus", "Load a dash.json first, or start a blank layout.", true);
-    return;
-  }
-  if (!exportGate()) return;
-  const doc = { ...state.doc };
-  doc.layout = { id: state.id || uuid4(), revision: state.revision, name: state.name };
-  doc.assets = [...state.assets].map(([path, a]) => ({
-    path, size: a.bytes.length, crc32: hex8(crc32(a.bytes)),
-  }));
-  for (const [path, a] of state.assets) {
-    download(path.split("/").pop(), a.bytes);
-    await new Promise(r => setTimeout(r, 250));   // browsers throttle bursts
-  }
-  download("dash.json", new TextEncoder().encode(JSON.stringify(doc, null, 2)));
-  say("exportStatus",
-    `Exported ${state.assets.size + 1} separate files at revision ${state.revision} ` +
-    `(unchanged — loose export doesn't bump it).`);
-};
-
 
 /* ------------------------------------------------- vehicle settings ---- *
  * vehicle.json, the per-bike config stored on the harness adapter EEPROM
@@ -4312,8 +4414,7 @@ $("btnVehExport").onclick = () => {
   const { errs, bytes } = vehBuild();
   if (errs.length) { say("vehStatus", "Not exported:\n• " + errs.join("\n• "), true); return; }
   download(vehicle.name.replace(/[^\w.-]+/g, "_") || "vehicle.json", bytes);
-  say("vehStatus", `Exported ${vehicle.name} (${bytes.length} B). In the app: Vehicle tab → Import file → Save to dash.\n` +
-                   `Over the wire: python ftp1_send.py COMx --vehicle ${vehicle.name}`);
+  say("vehStatus", `Exported ${vehicle.name}. In the app: Vehicle tab → Import file → Save to dash.`);
 };
 
 
@@ -4795,7 +4896,8 @@ document.addEventListener("dragleave", e => { if (e.relatedTarget === null) docu
 document.addEventListener("drop", async e => {
   e.preventDefault();
   document.body.classList.remove("drop-hot");
-  // Route by type: JSON -> layout, image -> background, anything else -> asset
+  // Route by type: .fglayout -> open, vehicle.json -> vehicle panel,
+  // image -> background, font -> Fonts, anything else -> a file in the layout.
   for (const f of e.dataTransfer.files) {
     if (/\.fglayout$/i.test(f.name)) {
       try {
@@ -4811,33 +4913,26 @@ document.addEventListener("drop", async e => {
           $("vehicleBlock").scrollIntoView({ behavior: "smooth", block: "start" });
           continue;
         }
-        state.doc = doc;
-        const L = doc.layout || {};
-        state.id = L.id || uuid4();
-        state.revision = Number(L.revision) || 0;
-        state.name = L.name || f.name.replace(/\.json$/i, "");
-        state.selected = null;
-        state.testAngle = null;
-        renderIdentity();
-        renderElementPanel();
-        renderAssets();
-        say("layoutStatus", `Loaded ${f.name}.`);
+        say("layoutStatus", `Layouts open from .fglayout files — ${f.name} wasn't loaded.`, true);
       } catch { say("layoutStatus", `${f.name} isn't valid JSON.`, true); }
     } else if (f.type.startsWith("image/")) {
-      const img = new Image();
-      img.onload = () => {
-        state.img = img; state.zoom = 1; state.offX = 0; state.offY = 0;
-        $("zoom").value = 100; $("zoomOut").textContent = "1.00×";
-        $("btnAddBg").disabled = false; $("btnClearImage").disabled = false;
-        drawPreview();
-      };
-      img.src = URL.createObjectURL(f);
+      loadPhoto(f);
     } else {
-      await addFile(f);
+      const n = await addFile(f);
+      if (n) say("fontStatus", n);
       renderAssets();
     }
   }
 });
+
+/* ------------------------------------------------------------ help ---- */
+$("btnHelp").onclick = () => { $("helpDlg").showModal(); };
+$("helpClose").onclick = () => $("helpDlg").close();
+/* A click on the dimmed backdrop (outside the panel) closes it too. */
+$("helpDlg").addEventListener("click", e => { if (e.target === $("helpDlg")) $("helpDlg").close(); });
+/* Contents links scroll inside the panel instead of changing the page URL. */
+for (const a of document.querySelectorAll(".help-toc a"))
+  a.onclick = e => { e.preventDefault(); document.querySelector(a.getAttribute("href")).scrollIntoView({ behavior: "smooth" }); };
 
 drawPreview();
 renderAssets();
@@ -4846,27 +4941,22 @@ renderElementList();
 </script>
 
 <script>
-/* GitHub Pages integration: allow the gallery to open a hosted .fglayout
-   directly with /configurator/?layout=/layouts/example.fglayout */
+/* Gallery integration: /configurator/?layout=/layouts/example.fglayout */
 window.addEventListener("DOMContentLoaded", async () => {
-  const url = new URL(window.location.href);
-  const layoutUrl = url.searchParams.get("layout");
+  const layoutUrl = new URL(window.location.href).searchParams.get("layout");
   if (!layoutUrl) return;
   try {
-    const r = await fetch(layoutUrl, { cache: "no-store" });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const bytes = new Uint8Array(await r.arrayBuffer());
-    const name = decodeURIComponent(layoutUrl.split("/").pop() || "layout.fglayout");
+    say("layoutStatus", "Opening gallery layout…");
+    const url = new URL(layoutUrl, window.location.href);
+    const response = await fetch(url.href, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const name = decodeURIComponent(url.pathname.split("/").pop() || "layout.fglayout");
     await importFgl(bytes, name);
     const target = document.getElementById("layoutBlock");
     if (target) target.scrollIntoView({ block: "start" });
   } catch (err) {
-    const box = document.getElementById("layoutStatus");
-    if (box) {
-      box.classList.remove("hidden");
-      box.classList.add("bad");
-      box.textContent = `Could not open the hosted layout: ${err.message}`;
-    }
+    say("layoutStatus", `Could not open the hosted layout: ${err.message}`, true);
   }
 });
 </script>
